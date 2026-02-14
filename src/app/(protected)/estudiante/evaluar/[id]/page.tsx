@@ -65,6 +65,7 @@ export default function EvaluarDocentePage({ params }: { params: Promise<{ id: s
   const [selecciones, setSelecciones] = useState<Record<number, number>>({});
   const [comentariosAspecto, setComentariosAspecto] = useState<Record<number, string>>({});
   const [comentarioGeneral, setComentarioGeneral] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
 
   const [evalId, setEvalId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -125,6 +126,8 @@ export default function EvaluarDocentePage({ params }: { params: Promise<{ id: s
   const validar = () => {
     if (!config) return false;
 
+    setFieldErrors({});
+
     const todosEvaluados = config.aspectos.every((a) => selecciones[a.id]);
     if (!todosEvaluados) {
       toast({
@@ -157,6 +160,7 @@ export default function EvaluarDocentePage({ params }: { params: Promise<{ id: s
     if (!config || !evalId) return;
 
     setIsSubmitting(true);
+    setFieldErrors({});
 
     try {
       // Construir los items para el bulk save
@@ -171,19 +175,46 @@ export default function EvaluarDocentePage({ params }: { params: Promise<{ id: s
       });
 
       // Llamar al endpoint bulk
-      const response = await evaluacionDetalleService.bulkSave({
-        eval_id: evalId,
-        items,
-        cmt_gen: comentarioGeneral || null,
-      });
+      const response = await evaluacionDetalleService.bulkSave(
+        {
+          eval_id: evalId,
+          items,
+          cmt_gen: comentarioGeneral || null,
+        },
+        {
+          es_cmt_gen: config.es_cmt_gen,
+          es_cmt_gen_oblig: config.es_cmt_gen_oblig,
+          aspectos: config.aspectos,
+        }
+      );
 
       if (response.success) {
+        setFieldErrors({});
         toast({ title: "Evaluación enviada" });
         router.push(`/estudiante/dashboard/${configId}`);
       } else {
+        const details = Array.isArray(response.error?.details) ? response.error.details : [];
+        if (details.length) {
+          const nextErrors: Record<string, string[]> = {};
+          details.forEach((issue: any) => {
+            const field = issue?.field || "general";
+            const messages: string[] = Array.isArray(issue?.errors) && issue.errors.length
+              ? issue.errors
+              : issue?.message
+                ? [issue.message]
+                : [];
+            if (!nextErrors[field]) nextErrors[field] = [];
+            nextErrors[field].push(...messages);
+          });
+          setFieldErrors(nextErrors);
+        }
+
+        const validationMessage = response.error?.message;
+        const firstIssue = details?.[0]?.message;
         toast({
           title: "Error",
-          description: response.data?.message || "No se pudo enviar la evaluación",
+          description:
+            validationMessage || firstIssue || response.data?.message || "Revisa los comentarios marcados",
           variant: "destructive",
         });
       }
@@ -245,6 +276,12 @@ export default function EvaluarDocentePage({ params }: { params: Promise<{ id: s
         <form onSubmit={handleSubmit} className="space-y-4">
           {config.aspectos.map((aspecto, index) => {
             const abierto = openAspecto === aspecto.id;
+            const opcionSeleccionadaId = selecciones[aspecto.id];
+            const opcionSeleccionada = aspecto.opciones.find((op) => op.id === opcionSeleccionadaId);
+            const selectedAeId = opcionSeleccionada?.a_e_id;
+            const comentarioErrors = selectedAeId
+              ? fieldErrors[`cmt_${selectedAeId}`] || []
+              : [];
 
             return (
               <motion.div
@@ -294,13 +331,20 @@ export default function EvaluarDocentePage({ params }: { params: Promise<{ id: s
                       </RadioGroup>
 
                       {aspecto.es_cmt && (
-                        <Textarea
-                          placeholder="Comentario del aspecto..."
-                          value={comentariosAspecto[aspecto.id] || ""}
-                          onChange={(e) =>
-                            setComentariosAspecto((p) => ({ ...p, [aspecto.id]: e.target.value }))
-                          }
-                        />
+                        <div className="space-y-2">
+                          <Textarea
+                            placeholder="Comentario del aspecto..."
+                            value={comentariosAspecto[aspecto.id] || ""}
+                            onChange={(e) =>
+                              setComentariosAspecto((p) => ({ ...p, [aspecto.id]: e.target.value }))
+                            }
+                          />
+                          {comentarioErrors.length > 0 && (
+                            <div className="text-sm text-red-600">
+                              {comentarioErrors[0]}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </CardContent>
                   )}
@@ -314,11 +358,18 @@ export default function EvaluarDocentePage({ params }: { params: Promise<{ id: s
             <Card className="rounded-2xl shadow-md">
               <CardContent className="p-5 space-y-3">
                 <h3 className="font-semibold">Comentario general</h3>
-                <Textarea
-                  value={comentarioGeneral}
-                  onChange={(e) => setComentarioGeneral(e.target.value)}
-                  placeholder="Escribe un comentario general"
-                />
+                <div className="space-y-2">
+                  <Textarea
+                    value={comentarioGeneral}
+                    onChange={(e) => setComentarioGeneral(e.target.value)}
+                    placeholder="Escribe un comentario general"
+                  />
+                  {fieldErrors.cmt_gen?.length ? (
+                    <div className="text-sm text-red-600">
+                      {fieldErrors.cmt_gen[0]}
+                    </div>
+                  ) : null}
+                </div>
               </CardContent>
             </Card>
           )}

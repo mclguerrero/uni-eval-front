@@ -30,6 +30,7 @@ import { FileText, Edit3, Plus, Check, AlertCircle, Database } from "lucide-reac
 import { type Tipo } from "@/src/api";
 import { tiposEvaluacionService, categoriaTipoMapService } from "@/src/api";
 import { useToast } from "@/hooks/use-toast";
+import { alphaNumericSpanish } from "@/src/api/validation/comment-rules";
 
 interface ModalTipoEvaluacionProps {
   isOpen: boolean;
@@ -102,16 +103,25 @@ export function ModalTipoEvaluacion({
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {};
 
-    if (!formData.nombre.trim()) {
+    const nombreTrim = formData.nombre.trim();
+    const descripcionTrim = formData.descripcion.trim();
+
+    if (!nombreTrim) {
       newErrors.nombre = "El nombre es obligatorio";
-    } else if (formData.nombre.trim().length < 3) {
-      newErrors.nombre = "El nombre debe tener al menos 3 caracteres";
+    } else if (nombreTrim.length < 1 || nombreTrim.length > 100) {
+      newErrors.nombre = "El nombre debe tener entre 1 y 100 caracteres";
+    } else {
+      const nameError = alphaNumericSpanish(nombreTrim);
+      if (nameError) newErrors.nombre = nameError;
     }
 
-    if (!formData.descripcion.trim()) {
-      newErrors.descripcion = "La descripción es obligatoria";
-    } else if (formData.descripcion.trim().length < 10) {
-      newErrors.descripcion = "La descripción debe tener al menos 10 caracteres";
+    if (!descripcionTrim) {
+      newErrors.descripcion = "La descripcion es obligatoria";
+    } else if (descripcionTrim.length < 1 || descripcionTrim.length > 500) {
+      newErrors.descripcion = "La descripcion debe tener entre 1 y 500 caracteres";
+    } else {
+      const descError = alphaNumericSpanish(descripcionTrim);
+      if (descError) newErrors.descripcion = descError;
     }
 
     setErrors(newErrors);

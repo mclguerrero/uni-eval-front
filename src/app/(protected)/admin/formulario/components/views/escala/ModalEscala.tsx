@@ -23,6 +23,7 @@ import { Hash, Edit3, Plus, AlertCircle, Star, Check, Database } from "lucide-re
 import { type Escala } from "@/src/api"
 import { escalasValoracionService, categoriaEscalaMapService } from "@/src/api"
 import { useToast } from "@/hooks/use-toast"
+import { alphaNumericSpanish } from "@/src/api/validation/comment-rules"
 
 interface ModalEscalaProps {
   isOpen: boolean
@@ -91,22 +92,35 @@ export function ModalEscala({ isOpen, onClose, escala, categoryId, onSuccess, on
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {}
 
-    if (!formData.sigla.trim()) {
+    const siglaTrim = formData.sigla.trim()
+    const nombreTrim = formData.nombre.trim()
+    const descripcionTrim = formData.descripcion.trim()
+
+    if (!siglaTrim) {
       newErrors.sigla = "La sigla es obligatoria"
-    } else if (formData.sigla.trim().length > 10) {
-      newErrors.sigla = "La sigla debe tener máximo 10 caracteres"
+    } else if (siglaTrim.length < 1 || siglaTrim.length > 5) {
+      newErrors.sigla = "La sigla debe tener entre 1 y 5 caracteres"
+    } else {
+      const siglaError = alphaNumericSpanish(siglaTrim)
+      if (siglaError) newErrors.sigla = siglaError
     }
 
-    if (!formData.nombre.trim()) {
+    if (!nombreTrim) {
       newErrors.nombre = "El nombre es obligatorio"
-    } else if (formData.nombre.trim().length < 3) {
-      newErrors.nombre = "El nombre debe tener al menos 3 caracteres"
+    } else if (nombreTrim.length < 1 || nombreTrim.length > 100) {
+      newErrors.nombre = "El nombre debe tener entre 1 y 100 caracteres"
+    } else {
+      const nameError = alphaNumericSpanish(nombreTrim)
+      if (nameError) newErrors.nombre = nameError
     }
 
-    if (!formData.descripcion.trim()) {
-      newErrors.descripcion = "La descripción es obligatoria"
-    } else if (formData.descripcion.trim().length < 10) {
-      newErrors.descripcion = "La descripción debe tener al menos 10 caracteres"
+    if (!descripcionTrim) {
+      newErrors.descripcion = "La descripcion es obligatoria"
+    } else if (descripcionTrim.length < 1 || descripcionTrim.length > 500) {
+      newErrors.descripcion = "La descripcion debe tener entre 1 y 500 caracteres"
+    } else {
+      const descError = alphaNumericSpanish(descripcionTrim)
+      if (descError) newErrors.descripcion = descError
     }
 
     setErrors(newErrors)
