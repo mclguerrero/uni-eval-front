@@ -34,7 +34,7 @@ export interface User {
 // AUTHORIZATION
 // ========================
 
-export type AppRoleName = 'Admin' | 'Docente' | 'Estudiante' | 'Director Programa';
+export type AppRoleName = 'Admin' | 'Director Programa';
 export type RoleType = 'app' | 'auth';
 
 export interface RoutePermission {
@@ -64,9 +64,7 @@ export interface AuthorizationContext {
 
 export const APP_ROLE_IDS = {
   ADMIN: 1,
-  DOCENTE: 2,
-  ESTUDIANTE: 3,
-  DIRECTOR_PROGRAMA: 4,
+  DIRECTOR_PROGRAMA: 2,
 } as const;
 
 export const AUTH_ROLE_IDS = {
@@ -81,15 +79,11 @@ export const AUTH_ROLE_IDS = {
 
 export const APP_ROLE_ID_TO_NAME: Record<number, AppRoleName> = {
   [APP_ROLE_IDS.ADMIN]: 'Admin',
-  [APP_ROLE_IDS.DOCENTE]: 'Docente',
-  [APP_ROLE_IDS.ESTUDIANTE]: 'Estudiante',
   [APP_ROLE_IDS.DIRECTOR_PROGRAMA]: 'Director Programa',
 } as const;
 
 export const APP_ROLE_NAME_TO_ID: Record<AppRoleName, number> = {
   'Admin': APP_ROLE_IDS.ADMIN,
-  'Docente': APP_ROLE_IDS.DOCENTE,
-  'Estudiante': APP_ROLE_IDS.ESTUDIANTE,
   'Director Programa': APP_ROLE_IDS.DIRECTOR_PROGRAMA,
 } as const;
 
@@ -99,14 +93,10 @@ export const APP_ROLE_NAME_TO_ID: Record<AppRoleName, number> = {
 
 export const ROLE_ROUTES: Record<number, string> = {
   [APP_ROLE_IDS.ADMIN]: '/admin/dashboard',
-  [APP_ROLE_IDS.DOCENTE]: '/docente/dashboard',
-  [APP_ROLE_IDS.ESTUDIANTE]: '/estudiante/bienvenida',
-  [APP_ROLE_IDS.DIRECTOR_PROGRAMA]: '/docente/dashboard',
+  [APP_ROLE_IDS.DIRECTOR_PROGRAMA]: '/director-programa/dashboard',
 };
 
 export const ROLE_PRIORITY: number[] = [
   APP_ROLE_IDS.ADMIN,
   APP_ROLE_IDS.DIRECTOR_PROGRAMA,
-  APP_ROLE_IDS.DOCENTE,
-  APP_ROLE_IDS.ESTUDIANTE,
 ];

@@ -165,6 +165,8 @@ export interface EvalByUserItem {
   es_finalizada: boolean;
   nombre_docente: string;
   nombre_materia: string;
+  nom_programa: string;
+  semestre: string;
 }
 
 // ========================

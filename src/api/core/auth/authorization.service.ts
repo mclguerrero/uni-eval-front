@@ -169,7 +169,11 @@ export function getDefaultRoute(user: User | null): string {
   if (authRoleIds.includes(AUTH_ROLE_IDS.ESTUDIANTE)) {
     return '/estudiante/bienvenida';
   }
-  
+
+  if (authRoleIds.includes(APP_ROLE_IDS.DIRECTOR_PROGRAMA)) {
+    return '/director-programa/dashboard';
+  }
+
   // Si es docente (AUTH_ROLE_IDS.DOCENTE = 2)
   if (authRoleIds.includes(AUTH_ROLE_IDS.DOCENTE)) {
     return '/docente/dashboard';
@@ -221,12 +225,6 @@ export function normalizeRoleName(roleName: string): AppRoleName | null {
   const roleMap: Record<string, AppRoleName> = {
     'admin': 'Admin',
     'administrador': 'Admin',
-    'docente': 'Docente',
-    'docente_planta': 'Docente',
-    'docente_catedra': 'Docente',
-    'profesor': 'Docente',
-    'estudiante': 'Estudiante',
-    'alumno': 'Estudiante',
     'director programa': 'Director Programa',
     'director_programa': 'Director Programa',
   };
@@ -281,19 +279,21 @@ export const ROUTE_PERMISSIONS: Record<string, RoutePermission> = {
   },
   '/docente': {
     path: '/docente',
-    allowedRoleIds: [
-      APP_ROLE_IDS.ADMIN, 
-      APP_ROLE_IDS.DOCENTE, 
-      APP_ROLE_IDS.DIRECTOR_PROGRAMA
-    ],
+    allowedRoleIds: [AUTH_ROLE_IDS.DOCENTE],
     requiresAuth: true,
-    type: 'app',
+    type: 'auth',
   },
   '/estudiante': {
     path: '/estudiante',
     allowedRoleIds: [AUTH_ROLE_IDS.ESTUDIANTE],
     requiresAuth: true,
     type: 'auth',
+  },
+  '/director-programa': {
+    path: '/director-programa',
+    allowedRoleIds: [APP_ROLE_IDS.DIRECTOR_PROGRAMA],
+    requiresAuth: true,
+    type: 'app',
   },
 };
 

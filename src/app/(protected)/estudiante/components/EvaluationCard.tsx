@@ -31,6 +31,21 @@ export default function EvaluationCard({
           </h3>
         </div>
 
+        {/* Program & Semester */}
+        <div className="mb-5 space-y-2">
+          <div>
+            <p className="font-light text-gray-900">
+              {evaluacion.nom_programa || "N/A"}
+            </p>
+          </div>
+          
+          <div>
+            <p className="font-light text-gray-900">
+              {evaluacion.semestre || "N/A"}
+            </p>
+          </div>
+        </div>
+
         {/* Teacher */}
         <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 flex gap-3 mb-6">
           <div className="w-10 h-10 bg-white border rounded-xl flex items-center justify-center">

@@ -1,10 +1,13 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/hooks/useAuth"
 import Filtros from "../components/filters"
-import DocentesList from "./components/DocentesList"
-import DocentesCumplimientoBarChart from "./components/DocentesCumplimientoBarChart"
+import DocentesList from "../../admin/docente/components/DocentesList"
+import DocentesCumplimientoBarChart from "../../admin/docente/components/DocentesCumplimientoBarChart"
 import { metricService } from "@/src/api/services/metric/metric.service"
 import type { DocenteGeneralMetrics } from "@/src/api/services/metric/metric.service"
 
@@ -29,6 +32,13 @@ const logger = {
 }
 
 export default function DocenteAdminPage() {
+  const router = useRouter()
+  const { toast } = useToast()
+  const { user, isLoading: authLoading } = useAuth()
+
+  // Obtener programas del usuario
+  const [programasDirector, setProgramasDirector] = useState<{ id: number; nombre: string }[]>([])
+
   const [filtros, setFiltros] = useState<FiltrosState>({
     configuracionSeleccionada: null,
     semestreSeleccionado: '',
@@ -49,6 +59,37 @@ export default function DocenteAdminPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy] = useState('promedio_general');
   const [sortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Verificar rol y obtener programas
+  useEffect(() => {
+    if (authLoading || !user) return;
+
+    // Verificar si el usuario tiene el rol de Director de Programa
+    const rolesApp = user.rolesApp || [];
+    const isDirector = rolesApp.some((role: any) => role.name === "Director de Programa");
+
+    if (!isDirector) {
+      toast({
+        title: "Acceso Denegado",
+        description: "No tienes permisos para acceder a esta sección",
+        variant: "destructive",
+      });
+      router.replace("/");
+      return;
+    }
+
+    // Obtener programas del usuario
+    const programs = user.programs || [];
+    setProgramasDirector(programs);
+
+    // Si hay solo un programa, seleccionarlo automáticamente
+    if (programs.length === 1) {
+      setFiltros((prev) => ({
+        ...prev,
+        programaSeleccionado: programs[0].nombre || "",
+      }));
+    }
+  }, [user, authLoading, router, toast]);
 
   // Cargar docentes cuando cambian los filtros
   useEffect(() => {
@@ -112,16 +153,16 @@ export default function DocenteAdminPage() {
   }, []);
 
   const handleLimpiarFiltros = useCallback(() => {
-    setFiltros({
-      configuracionSeleccionada: null,
+    setFiltros((prev) => ({
+      ...prev,
       semestreSeleccionado: '',
       periodoSeleccionado: '',
-      programaSeleccionado: '',
       grupoSeleccionado: '',
       sedeSeleccionada: '',
-    });
+      programaSeleccionado: programasDirector.length === 1 ? (programasDirector[0]?.nombre || '') : '',
+    }));
     setSearchTerm('');
-  }, []);
+  }, [programasDirector]);
 
   const handleSearch = useCallback((term: string) => {
     setSearchTerm(term);
@@ -135,8 +176,14 @@ export default function DocenteAdminPage() {
   return (
     <>
       <header className="bg-white p-4 shadow-sm flex justify-between items-center">
-        <h1 className="text-xl font-bold text-gray-900">Administración de Docentes</h1>
-        {/* Aquí podrías agregar botones de acción si lo deseas */}
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Administración de Docentes</h1>
+          {programasDirector.length === 1 && (
+            <p className="text-sm text-gray-600 mt-1">
+              {programasDirector[0]?.nombre}
+            </p>
+          )}
+        </div>
       </header>
 
       <main className="p-6">
@@ -146,6 +193,7 @@ export default function DocenteAdminPage() {
           onFiltrosChange={handleFiltrosChange}
           onLimpiarFiltros={handleLimpiarFiltros}
           loading={loading}
+          programaFijoNombre={programasDirector.length === 1 ? programasDirector[0]?.nombre : undefined}
         />
 
         {/* Contenido */}

@@ -1,41 +1,19 @@
 "use client"
 
 import type React from "react"
-import { DocenteSidebar } from "./components/docente-sidebar"
+import { DirectorProgramaSidebar } from "./components/director-programa-sidebar"
 import { useSidebar } from "@/hooks/useSidebar"
-import { useAuth } from "@/src/api/core/auth/useAuth"
-import { AUTH_ROLE_IDS } from "@/src/api/core/auth/types"
+import { useRequireRole } from "@/src/api/core/auth/useAuth"
+import { APP_ROLE_IDS } from "@/src/api/core/auth/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
 
-export default function DocenteLayout({
+export default function DirectorProgramaLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   const { isCollapsed, toggle } = useSidebar()
-  const { user, isLoading, hasAuthRole } = useAuth()
-  const router = useRouter()
-  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    if (isLoading) return
-
-    if (!user) {
-      router.push('/login')
-      return
-    }
-
-    const authorized = hasAuthRole(AUTH_ROLE_IDS.DOCENTE)
-    
-    if (!authorized) {
-      router.push('/')
-      return
-    }
-
-    setIsAuthorized(true)
-  }, [user, isLoading, hasAuthRole, router])
+  const { isAuthorized } = useRequireRole(APP_ROLE_IDS.DIRECTOR_PROGRAMA)
 
   // Si no está autorizado, mostrar mensaje de acceso denegado
   if (isAuthorized === false) {
@@ -47,7 +25,7 @@ export default function DocenteLayout({
           </CardHeader>
           <CardContent>
             <p className="text-gray-600">
-              No tienes permisos para acceder al panel de docentes.
+              No tienes permisos para acceder al panel de Director de Programa.
             </p>
           </CardContent>
         </Card>
@@ -58,7 +36,7 @@ export default function DocenteLayout({
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar */}
-      <DocenteSidebar 
+      <DirectorProgramaSidebar 
         isCollapsed={isCollapsed} 
         onToggle={toggle} 
       />

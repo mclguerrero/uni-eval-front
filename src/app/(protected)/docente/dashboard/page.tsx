@@ -27,6 +27,11 @@ import {
   AlertCircle,
   BarChart3
 } from 'lucide-react';
+import { MateriaCard } from '../components/MateriaCard';
+import { DocenteKPIIndicators } from '../components/DocenteKPIIndicators';
+import { PendientesPorMateriaChart } from '../components/PendientesPorMateriaChart';
+import { AspectosEvaluacionChart } from '../components/AspectosEvaluacionChart';
+import Filtro from '../components/Filter';
 
 // Tipos locales para endpoint /user de docente
 interface DocenteMateria {
@@ -53,17 +58,26 @@ export default function DocenteDashboardPage() {
   const [userData, setUserData] = useState<DocenteUserData | null>(null);
   const [dashboardData, setDashboardData] = useState<DocenteGeneralMetrics | null>(null);
   const [materiasData, setMateriasData] = useState<DocenteMateriasMetrics | null>(null);
+  const [aspectosData, setAspectosData] = useState<DocenteAspectosMetrics | null>(null);
   
   // Materia seleccionada para ver detalles
   const [selectedMateria, setSelectedMateria] = useState<string | null>(null);
   const [completionData, setCompletionData] = useState<MateriaCompletionMetrics | null>(null);
-  const [aspectosData, setAspectosData] = useState<DocenteAspectosMetrics | null>(null);
+  const [selectedMateriaAspectosData, setSelectedMateriaAspectosData] = useState<DocenteAspectosMetrics | null>(null);
 
-  // CFG_T (deberías obtenerlo de un contexto o estado global)
-  const [cfgT] = useState(1); // TODO: Obtener dinámicamente
+  // Filtro y CFG_T dinámico
+  const [filtro, setFiltro] = useState({ configuracionSeleccionada: null as number | null });
+  const [cfgT, setCfgT] = useState<number>(1);
 
   // Obtener documento del usuario autenticado
   const docente = user?.user_username;
+
+  // Sincronizar cfgT cuando cambia la configuración seleccionada en el filtro
+  useEffect(() => {
+    if (filtro.configuracionSeleccionada) {
+      setCfgT(filtro.configuracionSeleccionada);
+    }
+  }, [filtro.configuracionSeleccionada]);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -88,16 +102,22 @@ export default function DocenteDashboardPage() {
         });
         console.log('✅ Dashboard response:', dashboard);
 
-        // La respuesta puede venir como objeto directo o dentro de un array data
-        if (dashboard.data && dashboard.data.length > 0) {
-          console.log('✅ Seteando dashboard data desde array:', dashboard.data[0]);
-          setDashboardData(dashboard.data[0]);
-        } else if (dashboard.docente) {
-          // Si viene como objeto directo
-          console.log('✅ Seteando dashboard data directo:', dashboard);
-          setDashboardData(dashboard as DocenteGeneralMetrics);
+        // La respuesta puede venir directamente como objeto o en un array data
+        let dashboardMetrics: DocenteGeneralMetrics | null = null;
+        
+        if (dashboard.data && Array.isArray(dashboard.data) && dashboard.data.length > 0) {
+          // Si viene como array en data (formato estándar DocenteListResponse)
+          dashboardMetrics = dashboard.data[0];
+        } else if ('docente' in dashboard && typeof (dashboard as any).docente === 'string') {
+          // Si viene directamente como objeto DocenteGeneralMetrics
+          dashboardMetrics = dashboard as unknown as DocenteGeneralMetrics;
+        }
+
+        if (dashboardMetrics && dashboardMetrics.docente) {
+          console.log('✅ Seteando dashboard data:', dashboardMetrics);
+          setDashboardData(dashboardMetrics);
         } else {
-          console.warn('⚠️ Dashboard sin datos:', dashboard);
+          console.warn('⚠️ Dashboard sin datos válidos:', dashboard);
         }
 
         // Cargar materias del docente
@@ -107,6 +127,15 @@ export default function DocenteDashboardPage() {
         });
         console.log('✅ Materias response:', materias);
         setMateriasData(materias);
+
+        // Cargar aspectos del docente (sin codigo_materia para obtener todos)
+        console.log('🔍 Cargando aspectos del docente...');
+        const aspectos = await metricService.getDocenteAspectos({
+          cfg_t: cfgT,
+          docente: docente
+        });
+        console.log('✅ Aspectos response:', aspectos);
+        setAspectosData(aspectos);
 
       } catch (err) {
         console.error('❌ Error al cargar datos:', err);
@@ -139,7 +168,7 @@ export default function DocenteDashboardPage() {
           docente: docente,
           codigo_materia: selectedMateria
         });
-        setAspectosData(aspectos);
+        setSelectedMateriaAspectosData(aspectos);
 
       } catch (err) {
         console.error('Error al cargar detalles de materia:', err);
@@ -191,77 +220,31 @@ export default function DocenteDashboardPage() {
         </Badge>
       </div>
 
+      {/* Filtro de Evaluación */}
+      <Filtro
+        filtro={filtro}
+        onFiltroChange={setFiltro}
+        onLimpiarFiltro={() => setFiltro({ configuracionSeleccionada: null })}
+        loading={loading}
+      />
+
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Evaluaciones"
-          value={dashboardData.total_evaluaciones}
-          icon={<BookOpen className="h-4 w-4" />}
-          variant="default"
-        />
-        <StatCard
-          title="Realizadas"
-          value={dashboardData.total_realizadas}
-          icon={<CheckCircle className="h-4 w-4" />}
-          variant="success"
-        />
-        <StatCard
-          title="Pendientes"
-          value={dashboardData.total_pendientes}
-          icon={<Clock className="h-4 w-4" />}
-          variant="warning"
-        />
-        <StatCard
-          title="Cumplimiento"
-          value={`${dashboardData.porcentaje_cumplimiento}%`}
-          icon={<TrendingUp className="h-4 w-4" />}
-          variant="info"
-          showProgress
-          progress={dashboardData.porcentaje_cumplimiento}
-        />
-      </div>
+      <DocenteKPIIndicators
+        totalEvaluaciones={dashboardData.total_evaluaciones}
+        totalRealizadas={dashboardData.total_realizadas}
+        totalPendientes={dashboardData.total_pendientes}
+        porcentajeCumplimiento={dashboardData.porcentaje_cumplimiento}
+      />
 
-      {/* Tabs */}
-      <Tabs defaultValue="materias" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="materias">Mis Materias</TabsTrigger>
-          <TabsTrigger value="general">Estadísticas Generales</TabsTrigger>
-        </TabsList>
+      {/* Gráfica Principal: Pendientes por Materia */}
+      {materiasData && materiasData.materias.length > 0 && (
+        <PendientesPorMateriaChart materias={materiasData.materias} />
+      )}
 
-        <TabsContent value="materias" className="space-y-4">
-          {materiasData && materiasData.materias.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {materiasData.materias.map((materia) => (
-                <MateriaCard
-                  key={materia.codigo_materia}
-                  materia={materia}
-                  onClick={() => setSelectedMateria(materia.codigo_materia)}
-                  isSelected={selectedMateria === materia.codigo_materia}
-                />
-              ))}
-            </div>
-          ) : (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>No se encontraron materias asignadas</AlertDescription>
-            </Alert>
-          )}
-
-          {/* Detalles de materia seleccionada */}
-          {selectedMateria && completionData && aspectosData && (
-            <MateriaDetails
-              materia={materiasData?.materias.find(m => m.codigo_materia === selectedMateria)}
-              completion={completionData}
-              aspectos={aspectosData}
-              onClose={() => setSelectedMateria(null)}
-            />
-          )}
-        </TabsContent>
-
-        <TabsContent value="general">
-          <GeneralStats data={dashboardData} />
-        </TabsContent>
-      </Tabs>
+      {/* Gráfica de Aspectos de Evaluación */}
+      {aspectosData && (
+        <AspectosEvaluacionChart aspectos={aspectosData} />
+      )}
     </div>
   );
 }
@@ -318,76 +301,6 @@ function StatCard({ title, value, icon, variant, showProgress, progress }: StatC
   );
 }
 
-interface MateriaCardProps {
-  materia: MateriaMetric;
-  onClick: () => void;
-  isSelected: boolean;
-}
-
-function MateriaCard({ materia, onClick, isSelected }: MateriaCardProps) {
-  const hasMultipleGroups = materia.grupos && materia.grupos.length > 0;
-
-  return (
-    <Card 
-      className={`cursor-pointer transition-all hover:shadow-lg ${
-        isSelected ? 'ring-2 ring-primary' : ''
-      }`}
-      onClick={onClick}
-    >
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="space-y-1 flex-1">
-            <CardTitle className="text-base">{materia.nombre_materia}</CardTitle>
-            <CardDescription>Código: {materia.codigo_materia}</CardDescription>
-          </div>
-          {!hasMultipleGroups && materia.grupo && (
-            <Badge variant="outline">{materia.grupo}</Badge>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {hasMultipleGroups ? (
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Grupos:</p>
-            <div className="flex flex-wrap gap-2">
-              {materia.grupos?.map((grupo) => (
-                <Badge key={grupo.grupo} variant="secondary">
-                  {grupo.grupo}: {grupo.total_realizadas}/{grupo.total_evaluaciones}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Evaluaciones:</span>
-            <span className="font-medium">
-              {materia.total_realizadas}/{materia.total_evaluaciones}
-            </span>
-          </div>
-        )}
-        
-        <Progress 
-          value={materia.porcentaje_cumplimiento} 
-          className="h-2"
-        />
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>{materia.porcentaje_cumplimiento}% completado</span>
-          <span>{materia.total_pendientes} pendientes</span>
-        </div>
-
-        {materia.promedio_general !== null && (
-          <div className="pt-2 border-t">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Promedio:</span>
-              <span className="font-bold text-lg">{materia.promedio_general.toFixed(2)}</span>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
 interface MateriaDetailsProps {
   materia?: MateriaMetric;
   completion: MateriaCompletionMetrics;
@@ -395,132 +308,8 @@ interface MateriaDetailsProps {
   onClose: () => void;
 }
 
-function MateriaDetails({ materia, completion, aspectos, onClose }: MateriaDetailsProps) {
-  if (!materia) return null;
-
-  return (
-    <Card className="border-2 border-primary">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>{materia.nombre_materia}</CardTitle>
-            <CardDescription>Detalles de evaluación</CardDescription>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            ✕
-          </button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Aspectos de evaluación */}
-        <div>
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Evaluación por Aspectos
-          </h3>
-          {aspectos.aspectos.length > 0 ? (
-            <div className="space-y-3">
-              {aspectos.aspectos.map((aspecto) => (
-                <div key={aspecto.aspecto_id} className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">{aspecto.nombre}</span>
-                    <span className="text-sm text-muted-foreground">
-                      {aspecto.suma.toFixed(2)} ({aspecto.total_respuestas} respuestas)
-                    </span>
-                  </div>
-                  <Progress 
-                    value={(aspecto.suma / (aspecto.total_respuestas * 2)) * 100} 
-                    className="h-2"
-                  />
-                </div>
-              ))}
-              
-              <div className="pt-4 border-t mt-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Promedio General:</span>
-                    <p className="text-xl font-bold">{aspectos.promedio?.toFixed(2) ?? 'N/A'}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Desviación:</span>
-                    <p className="text-xl font-bold">{aspectos.desviacion?.toFixed(2) ?? 'N/A'}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>No hay evaluaciones registradas aún</AlertDescription>
-            </Alert>
-          )}
-        </div>
-
-        {/* Estado de completitud por grupo */}
-        <div>
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Estado de Evaluaciones por Estudiante
-          </h3>
-          <div className="space-y-4">
-            {completion.grupos.map((grupo) => (
-              <Card key={grupo.grupo}>
-                <CardHeader>
-                  <CardTitle className="text-base">Grupo {grupo.grupo}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Completados */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="font-medium text-sm">
-                        Completados ({grupo.completados.length})
-                      </span>
-                    </div>
-                    {grupo.completados.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {grupo.completados.map((est) => (
-                          <Badge key={est.id} variant="default" className="bg-green-100 text-green-800">
-                            {est.nombre}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">Ninguno</p>
-                    )}
-                  </div>
-
-                  {/* Pendientes */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Clock className="h-4 w-4 text-orange-600" />
-                      <span className="font-medium text-sm">
-                        Pendientes ({grupo.pendientes.length})
-                      </span>
-                    </div>
-                    {grupo.pendientes.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {grupo.pendientes.map((est) => (
-                          <Badge key={est.id} variant="secondary" className="bg-orange-100 text-orange-800">
-                            {est.nombre}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">Ninguno</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+function MateriaDetails(): null {
+  return null;
 }
 
 function GeneralStats({ data }: { data: DocenteGeneralMetrics }) {

@@ -131,6 +131,8 @@ export interface MateriaGrupoMetric {
 export interface MateriaMetric {
   codigo_materia: string;
   nombre_materia: string;
+  nom_programa: string;
+  semestre: string;
   total_evaluaciones: number;
   total_realizadas: number;
   total_pendientes: number;

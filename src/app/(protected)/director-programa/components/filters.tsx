@@ -57,6 +57,7 @@ interface FiltrosProps {
   onFiltrosChange: (filtros: FiltrosState) => void
   onLimpiarFiltros: () => void
   loading?: boolean
+  programaFijoNombre?: string
 }
 
 interface ApiResponse<T> {
@@ -225,11 +226,12 @@ function FilterField({
 // Main Component
 // ============================================================================
 
-export default function Filtros({
-  filtros,
-  onFiltrosChange,
-  onLimpiarFiltros,
+export default function Filtros({ 
+  filtros, 
+  onFiltrosChange, 
+  onLimpiarFiltros, 
   loading = false,
+  programaFijoNombre,
 }: FiltrosProps) {
   const [configuraciones, setConfiguraciones] = useState<ConfiguracionTipo[]>([])
   const [periodos, setPeriodos] = useState<string[]>([])
@@ -337,7 +339,23 @@ export default function Filtros({
             logger.error('Filtros', 'Error cargando programas', err)
             return []
           })
-          if (mounted) setProgramas(normalizeApiResponse<string>(programasResponse))
+          const programasData = normalizeApiResponse<string>(programasResponse)
+          if (mounted) {
+            setProgramas(programasData)
+
+            if (programaFijoNombre) {
+              const programaMatch = programasData.find(
+                (programa) => programa.trim().toLowerCase() === programaFijoNombre.trim().toLowerCase(),
+              )
+
+              if (programaMatch && filtros.programaSeleccionado !== programaMatch) {
+                onFiltrosChange({
+                  ...filtros,
+                  programaSeleccionado: programaMatch,
+                })
+              }
+            }
+          }
         } else {
           if (mounted) setProgramas([])
         }
@@ -599,7 +617,7 @@ export default function Filtros({
               value={filtros.programaSeleccionado}
               placeholder="Todos los programas"
               options={programas}
-              disabled={loading || loadingOpciones || !filtros.sedeSeleccionada}
+              disabled={loading || loadingOpciones || !filtros.sedeSeleccionada || !!programaFijoNombre}
               isLoading={loadingOpciones && !!filtros.sedeSeleccionada}
               onChange={(v) => handleFiltroChange('programaSeleccionado', v)}
             />
@@ -641,12 +659,12 @@ export default function Filtros({
                   <Badge
                     variant="outline"
                     className={`text-[10px] px-1.5 py-0 h-4 ${
-                      configuracionSeleccionada!.es_activo
+                      configuracionSeleccionada.es_activo
                         ? "border-green-500/30 text-green-700 bg-green-50"
                         : "border-border text-muted-foreground"
                     }`}
                   >
-                    {configuracionSeleccionada!.es_activo ? "Activa" : "Inactiva"}
+                    {configuracionSeleccionada.es_activo ? "Activa" : "Inactiva"}
                   </Badge>
                 </div>
                 <ChevronDown
@@ -665,9 +683,9 @@ export default function Filtros({
                         Tipo
                       </p>
                       <p className="text-sm font-medium text-foreground">
-                        {configuracionSeleccionada!.tipo_evaluacion.tipo.nombre}
+                        {configuracionSeleccionada.tipo_evaluacion.tipo.nombre}
                         {" - "}
-                        {configuracionSeleccionada!.tipo_evaluacion.categoria.nombre}
+                        {configuracionSeleccionada.tipo_evaluacion.categoria.nombre}
                       </p>
                     </div>
                     <div className="space-y-1">
@@ -677,7 +695,7 @@ export default function Filtros({
                       <div className="flex items-center gap-1.5">
                         <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                         <p className="text-sm font-medium text-foreground">
-                          {formatearFecha(configuracionSeleccionada!.fecha_inicio)}
+                          {formatearFecha(configuracionSeleccionada.fecha_inicio)}
                         </p>
                       </div>
                     </div>
@@ -688,7 +706,7 @@ export default function Filtros({
                       <div className="flex items-center gap-1.5">
                         <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                         <p className="text-sm font-medium text-foreground">
-                          {formatearFecha(configuracionSeleccionada!.fecha_fin)}
+                          {formatearFecha(configuracionSeleccionada.fecha_fin)}
                         </p>
                       </div>
                     </div>
