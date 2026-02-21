@@ -1,9 +1,25 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { 
+  Search, 
+  ExternalLink, 
+  ChevronLeft, 
+  ChevronRight, 
+  MoreHorizontal,
+  FileSearch,
+  Users,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  Award,
+  Settings
+} from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 import MateriasModal from "./MateriasModal"
 import type { DocenteGeneralMetrics } from "@/src/api/services/metric/metric.service"
 
@@ -45,30 +61,34 @@ export default function DocentesList({
   const [selectedDocente, setSelectedDocente] = useState<DocenteGeneralMetrics | null>(null)
   const [showMateriasModal, setShowMateriasModal] = useState(false)
 
-  const getCompletionPercentageColor = (percentage: number) => {
-    if (percentage === 0) return 'bg-gray-200'
-    if (percentage < 25) return 'bg-red-200'
-    if (percentage < 50) return 'bg-orange-200'
-    if (percentage < 75) return 'bg-yellow-200'
-    return 'bg-green-200'
-  }
-
-  const getCompletionPercentageText = (percentage: number) => {
-    if (percentage === 0) return 'text-gray-600'
-    if (percentage < 25) return 'text-red-700'
-    if (percentage < 50) return 'text-orange-700'
-    if (percentage < 75) return 'text-yellow-700'
-    return 'text-green-700'
-  }
-
-  const getStatusBadge = (docente: DocenteGeneralMetrics) => {
+  const getStatusConfig = (docente: DocenteGeneralMetrics) => {
     if (docente.total_pendientes === 0 && docente.total_realizadas > 0) {
-      return { label: 'Completado', color: 'bg-green-100 text-green-800' }
+      return { 
+        label: 'Completado', 
+        color: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+        icon: <CheckCircle2 className="w-3 h-3" />
+      }
     }
     if (docente.total_realizadas > 0) {
-      return { label: 'En Progreso', color: 'bg-blue-100 text-blue-800' }
+      return { 
+        label: 'En Progreso', 
+        color: 'bg-blue-50 text-blue-700 border-blue-100',
+        icon: <Clock className="w-3 h-3" />
+      }
     }
-    return { label: 'Pendiente', color: 'bg-gray-100 text-gray-800' }
+    return { 
+      label: 'Pendiente', 
+      color: 'bg-slate-50 text-slate-600 border-slate-100',
+      icon: <AlertCircle className="w-3 h-3" />
+    }
+  }
+
+  const getScoreColor = (score: number | null) => {
+    if (!score) return "text-slate-300";
+    if (score >= 4.5) return "text-emerald-600";
+    if (score >= 4.0) return "text-blue-600";
+    if (score >= 3.0) return "text-amber-600";
+    return "text-rose-600";
   }
 
   const handleViewMaterias = (docente: DocenteGeneralMetrics) => {
@@ -87,307 +107,261 @@ export default function DocentesList({
     }
 
     // Botón anterior
-    if (pagination.page > 1) {
-      buttons.push(
-        <Button
-          key="prev"
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(pagination.page - 1)}
-          disabled={loading}
-          className="border-gray-300 hover:border-blue-500"
-        >
-          Anterior
-        </Button>
-      )
-    }
-
-    // Números de página
-    if (startPage > 1) {
-      buttons.push(
-        <Button
-          key={1}
-          variant={pagination.page === 1 ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => onPageChange(1)}
-          disabled={loading}
-          className={pagination.page === 1 ? 'bg-blue-600' : 'border-gray-300'}
-        >
-          1
-        </Button>
-      )
-      if (startPage > 2) {
-        buttons.push(
-          <span key="dots1" className="px-2 py-2 text-gray-500">
-            ...
-          </span>
-        )
-      }
-    }
+    buttons.push(
+      <Button
+        key="prev"
+        variant="ghost"
+        size="icon"
+        onClick={() => onPageChange(pagination.page - 1)}
+        disabled={loading || pagination.page === 1}
+        className="rounded-xl hover:bg-slate-100 disabled:opacity-30"
+      >
+        <ChevronLeft className="w-4 h-4" />
+      </Button>
+    )
 
     for (let i = startPage; i <= endPage; i++) {
       buttons.push(
         <Button
-          key={i}
-          variant={pagination.page === i ? 'default' : 'outline'}
+          key={`page-btn-${i}`}
+          variant={pagination.page === i ? 'default' : 'ghost'}
           size="sm"
           onClick={() => onPageChange(i)}
           disabled={loading}
-          className={
-            pagination.page === i
-              ? 'bg-blue-600'
-              : 'border-gray-300 hover:border-blue-500'
-          }
+          className={`h-9 w-9 rounded-xl font-bold transition-all duration-200 ${
+            pagination.page === i 
+              ? 'bg-slate-900 text-white shadow-lg' 
+              : 'text-slate-500 hover:bg-slate-100'
+          }`}
         >
           {i}
         </Button>
       )
     }
 
-    if (endPage < pagination.pages) {
-      if (endPage < pagination.pages - 1) {
-        buttons.push(
-          <span key="dots2" className="px-2 py-2 text-gray-500">
-            ...
-          </span>
-        )
-      }
-      buttons.push(
-        <Button
-          key={pagination.pages}
-          variant={pagination.page === pagination.pages ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => onPageChange(pagination.pages)}
-          disabled={loading}
-          className={
-            pagination.page === pagination.pages
-              ? 'bg-blue-600'
-              : 'border-gray-300 hover:border-blue-500'
-          }
-        >
-          {pagination.pages}
-        </Button>
-      )
-    }
-
     // Botón siguiente
-    if (pagination.page < pagination.pages) {
-      buttons.push(
-        <Button
-          key="next"
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(pagination.page + 1)}
-          disabled={loading}
-          className="border-gray-300 hover:border-blue-500"
-        >
-          Siguiente
-        </Button>
-      )
-    }
+    buttons.push(
+      <Button
+        key="next"
+        variant="ghost"
+        size="icon"
+        onClick={() => onPageChange(pagination.page + 1)}
+        disabled={loading || pagination.page === pagination.pages}
+        className="rounded-xl hover:bg-slate-100 disabled:opacity-30"
+      >
+        <ChevronRight className="w-4 h-4" />
+      </Button>
+    )
 
     return buttons
   }
 
   return (
-    <>
-      <Card className="shadow-lg border-0">
-        <CardHeader className="bg-gradient-to-r from-green-600 to-emerald-700 text-white rounded-t-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-white/20 rounded-lg">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3.934a3 3 0 01-2.868-4.06m17.868 0a9.003 9.003 0 01-5.909 3.042M15 21H9m6 0h6a3 3 0 01-2.868-4.06m-11.868 0a9.003 9.003 0 015.909-3.042m0 0A9 9 0 0127 12c0-4.978-4.029-9-9-9s-9 4.022-9 9" />
-                </svg>
-              </div>
-              <div>
-                <CardTitle className="text-xl font-bold">Docentes</CardTitle>
-                <p className="text-green-100 text-sm mt-1">
-                  Total: {pagination.total} docentes | Página {pagination.page} de {pagination.pages}
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardHeader>
+    <div className="space-y-6">
+      {/* Search and Quick Filters */}
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="relative w-full md:max-w-md group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
+          <Input
+            placeholder="Buscar por nombre o identificación..."
+            value={searchTerm}
+            onChange={(e) => onSearch(e.target.value)}
+            disabled={loading}
+            className="pl-11 h-12 bg-slate-50 border-transparent focus:bg-white focus:border-slate-200 rounded-2xl transition-all duration-300 font-medium"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="h-8 px-4 rounded-full border-slate-200 text-slate-500 font-black text-[10px] uppercase tracking-widest bg-white shadow-sm">
+            <Users className="w-3.5 h-3.5 mr-2 text-indigo-500" />
+            {pagination.total} Docentes
+          </Badge>
+          <div className="h-4 w-px bg-slate-200 mx-2" />
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Página {pagination.page} / {pagination.pages}</p>
+        </div>
+      </div>
 
-        <CardContent className="p-6">
-          {/* Search Bar */}
-          <div className="mb-6">
-            <div className="relative">
-              <svg
-                className="absolute left-3 top-3 w-5 h-5 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-              <Input
-                placeholder="Buscar por nombre o ID de docente..."
-                value={searchTerm}
-                onChange={(e) => onSearch(e.target.value)}
-                disabled={loading}
-                className="pl-10 border-2 border-gray-200 focus:border-green-500 rounded-xl h-10"
-              />
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-10 w-10 border-4 border-gray-200 border-t-green-600"></div>
-              <span className="ml-4 text-gray-600 font-medium">Cargando docentes...</span>
-            </div>
-          ) : docentes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="p-4 bg-gray-100 rounded-full mb-4">
-                <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay docentes</h3>
-              <p className="text-gray-600">Ajusta los filtros o intenta una búsqueda diferente</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b-2 border-gray-200 bg-gray-50">
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">ID Docente</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Nombre</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Estado</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Total Evaluaciones</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Realizadas</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Pendientes</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Cumplimiento</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Promedio</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Acciones</th>
+      {/* Table Container */}
+      <div className="relative bg-white rounded-[2rem] border-2 border-slate-100 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-50 bg-slate-50/30">
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Docente</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Estado Operativo</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Evaluaciones</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Cumplimiento</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Calificación</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {loading ? (
+                [...Array(pagination.limit || 10)].map((_, i) => (
+                  <tr key={`skeleton-${i}`} className="border-b border-slate-50">
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-4">
+                        <Skeleton className="h-12 w-12 rounded-2xl" />
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-40" />
+                          <Skeleton className="h-3 w-24" />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <Skeleton className="h-6 w-24 rounded-full" />
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="flex flex-col items-center gap-2">
+                        <Skeleton className="h-4 w-12" />
+                        <Skeleton className="h-1 w-16 rounded-full" />
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="w-32 space-y-2">
+                        <Skeleton className="h-3 w-8" />
+                        <Skeleton className="h-2 w-full rounded-full" />
+                      </div>
+                    </td>
+                    <td className="px-6 py-5 text-center">
+                      <Skeleton className="h-8 w-12 rounded-lg mx-auto" />
+                    </td>
+                    <td className="px-6 py-5 text-right">
+                      <Skeleton className="h-10 w-28 rounded-2xl ml-auto" />
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {docentes.map((docente, index) => {
-                    const status = getStatusBadge(docente)
-                    return (
-                      <tr
-                        key={`${docente.docente}-${index}`}
-                        className="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200"
-                      >
-                        <td className="px-6 py-4">
-                          <span className="font-mono text-sm font-semibold text-gray-900">
-                            {docente.docente}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                ))
+              ) : docentes.length > 0 ? (
+                docentes.map((docente) => {
+                  const status = getStatusConfig(docente)
+                  const compliance = docente.porcentaje_cumplimiento || 0
+                  return (
+                    <tr
+                      key={`docente-row-${docente.docente}`}
+                      className="group hover:bg-slate-50/50 transition-colors duration-200 border-b border-slate-50 last:border-0"
+                    >
+                      <td className="px-6 py-6">
+                        <div className="flex items-center gap-4">
+                          <div className="relative">
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 flex items-center justify-center font-black text-indigo-600 group-hover:scale-110 transition-transform duration-300 shadow-sm">
                               {docente.nombre_docente?.charAt(0) || 'D'}
                             </div>
-                            <div>
-                              <p className="font-medium text-gray-900 text-sm">
-                                {docente.nombre_docente || 'N/A'}
-                              </p>
-                            </div>
+                            {compliance === 100 && (
+                              <div className="absolute -top-1 -right-1 bg-emerald-500 text-white rounded-full p-0.5 shadow-lg shadow-emerald-200">
+                                <Award className="w-3 h-3" />
+                              </div>
+                            )}
                           </div>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span
-                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${status.color}`}
-                          >
-                            {status.label}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="text-sm font-medium text-gray-900">
-                            {docente.total_evaluaciones}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="text-sm font-medium text-green-700 bg-green-50 px-3 py-1 rounded-lg">
-                            {docente.total_realizadas}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="text-sm font-medium text-red-700 bg-red-50 px-3 py-1 rounded-lg">
-                            {docente.total_pendientes}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full ${getCompletionPercentageColor(
-                                  docente.porcentaje_cumplimiento
-                                )} transition-all duration-300`}
-                                style={{
-                                  width: `${docente.porcentaje_cumplimiento}%`,
-                                }}
-                              ></div>
-                            </div>
-                            <span
-                              className={`text-xs font-semibold ${getCompletionPercentageText(
-                                docente.porcentaje_cumplimiento
-                              )}`}
-                            >
-                              {docente.porcentaje_cumplimiento.toFixed(0)}%
-                            </span>
+                          <div className="max-w-[200px] truncate">
+                            <p className="font-bold text-slate-900 group-hover:text-indigo-900 transition-colors truncate">
+                              {docente.nombre_docente || 'Sin nombre'}
+                            </p>
+                            <p className="text-[10px] font-black text-slate-400 font-mono mt-0.5 uppercase tracking-widest flex items-center gap-1.5 line-clamp-1">
+                              <span className="h-1 w-1 rounded-full bg-slate-300" />
+                              ID: {docente.docente}
+                            </p>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="text-sm font-bold text-gray-900">
-                            {docente.promedio_general !== null
-                              ? docente.promedio_general.toFixed(2)
-                              : '—'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-6">
+                        <Badge variant="outline" className={`rounded-full border-2 px-3 py-1 font-black text-[9px] uppercase tracking-widest flex items-center w-fit gap-2 shadow-sm ${status.color}`}>
+                          <span className="relative flex h-2 w-2">
+                             <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${status.color.split(' ')[1].replace('text-', 'bg-')}`}></span>
+                             <span className={`relative inline-flex rounded-full h-2 w-2 ${status.color.split(' ')[1].replace('text-', 'bg-')}`}></span>
                           </span>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <Button
-                            size="sm"
-                            onClick={() => handleViewMaterias(docente)}
-                            disabled={loading}
-                            className="bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all duration-200"
-                          >
-                            <svg
-                              className="w-4 h-4 mr-2"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                          {status.label}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-6 text-center">
+                        <div className="flex flex-col items-center">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <span className="text-sm font-black text-slate-700">{docente.total_realizadas}</span>
+                            <span className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter">/ {docente.total_evaluaciones}</span>
+                          </div>
+                          <div className="flex gap-1">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <div 
+                                key={`comp-bar-${docente.docente}-${i}`} 
+                                className={`h-1 w-2.5 rounded-full transition-all duration-500 ${
+                                  (i / 5) * 100 < compliance ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.4)]' : 'bg-slate-100'
+                                }`} 
                               />
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                              />
-                            </svg>
-                            Ver Materias
-                          </Button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                            ))}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-6">
+                        <div className="w-32">
+                          <div className="flex justify-between items-center mb-1.5 px-0.5">
+                            <span className="text-[10px] font-black text-slate-900 italic tracking-tighter">{compliance.toFixed(0)}%</span>
+                            <span className="text-[8px] font-bold text-slate-300 uppercase">Progreso</span>
+                          </div>
+                          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-50">
+                            <div
+                              className={`h-full rounded-full transition-all duration-1000 ease-out shadow-sm ${
+                                compliance === 100 ? 'bg-emerald-500' : 
+                                compliance > 50 ? 'bg-indigo-500' : 'bg-amber-500'
+                              }`}
+                              style={{ width: `${compliance}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-6 text-center">
+                        <div className="flex flex-col items-center hover:scale-110 transition-transform cursor-help">
+                          <span className={`text-2xl font-black italic tracking-tighter ${getScoreColor(docente.promedio_general)}`}>
+                            {docente.promedio_general ? docente.promedio_general.toFixed(2) : "—"}
+                          </span>
+                          <div className="h-1 w-8 bg-slate-100 rounded-full mt-1 overflow-hidden shadow-inner">
+                             <div 
+                              className={`h-full rounded-full transition-all duration-1000 ${getScoreColor(docente.promedio_general).replace('text-', 'bg-')}`} 
+                              style={{ width: `${(docente.promedio_general || 0) * 20}%` }}
+                             />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-6 text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleViewMaterias(docente)}
+                          className="rounded-2xl border-2 border-slate-100 hover:border-slate-900 hover:bg-slate-900 hover:text-white transition-all duration-300 group/btn h-11 px-6 shadow-sm active:scale-95"
+                        >
+                          <Settings className="w-4 h-4 mr-2 group-hover/btn:rotate-90 transition-transform duration-500" />
+                          <span className="font-black text-[10px] uppercase tracking-widest">Gestionar</span>
+                        </Button>
+                      </td>
+                    </tr>
+                  )
+                })
+              ) : (
+                <tr>
+                  <td colSpan={6} className="px-6 py-32 text-center">
+                    <div className="flex flex-col items-center max-w-xs mx-auto animate-in zoom-in duration-500">
+                      <div className="p-10 rounded-[3rem] bg-slate-50 mb-6 border border-slate-100 shadow-inner">
+                        <FileSearch className="w-16 h-16 text-slate-200" />
+                      </div>
+                      <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-2 italic">Sin resultados</h3>
+                      <p className="text-xs font-bold text-slate-400 leading-relaxed uppercase tracking-tight">
+                        No pudimos encontrar docentes con los filtros actuales.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-          {/* Pagination */}
-          {pagination.pages > 1 && !loading && docentes.length > 0 && (
-            <div className="flex items-center justify-center gap-2 mt-6 pt-6 border-t border-gray-200">
-              <div className="flex gap-1">{renderPaginationButtons()}</div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Pagination Footer */}
+      <div className="flex items-center justify-between px-6 py-4 bg-slate-50/50 rounded-3xl border border-slate-100">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] hidden md:block">
+          Mostrando {docentes.length} de {pagination.total} registros institucionales
+        </p>
+        <div className="flex items-center gap-2 mx-auto md:mx-0">
+          {renderPaginationButtons()}
+        </div>
+      </div>
 
       {/* Materias Modal */}
       {showMateriasModal && selectedDocente && (
@@ -400,6 +374,6 @@ export default function DocentesList({
           }}
         />
       )}
-    </>
+    </div>
   )
 }

@@ -231,9 +231,9 @@ export default function EvaluarDocentePage({ params }: { params: Promise<{ id: s
         toast({ title: "Evaluación enviada" });
         const tipoFormId = config.tipo_form?.id ?? config.tipo_form_id ?? 1;
         if (tipoFormId === 1) {
-          router.push(`/estudiante/dashboard/${configId}`);
+          router.push(`/docente/eval/dashboard/${configId}`);
         } else {
-          router.push("/estudiante/bienvenida");
+          router.push("/docente/eval/bienvenida");
         }
       } else {
         const details = Array.isArray(response.error?.details) ? response.error.details : [];

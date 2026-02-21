@@ -8,8 +8,10 @@ import type { EvalByUserItem } from "@/src/api"
 
 export default function EvaluationCard({
   evaluacion,
+  basePath = "/estudiante",
 }: {
   evaluacion: EvalByUserItem & { es_finalizada?: boolean | null }
+  basePath?: string
 }) {
   const router = useRouter()
   const isCompleted = Boolean(evaluacion.es_finalizada)
@@ -72,7 +74,7 @@ export default function EvaluationCard({
             disabled={isCompleted}
             onClick={() =>
               router.push(
-                `/estudiante/evaluar/${evaluacion.id_configuracion}` +
+                `${basePath}/evaluar/${evaluacion.id_configuracion}` +
                 `?evalId=${evaluacion.id}` +
                 `&docente=${encodeURIComponent(evaluacion.nombre_docente || "")}` +
                 `&cod=${encodeURIComponent(evaluacion.codigo_materia || "")}` +

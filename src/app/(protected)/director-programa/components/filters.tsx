@@ -558,7 +558,7 @@ export default function Filtros({
                   {configuraciones.map((config) => (
                     <SelectItem key={config.id} value={String(config.id)}>
                       <span className="flex items-center gap-2">
-                        {config.tipo_evaluacion?.tipo?.nombre || `Tipo ${config.tipo_evaluacion_id}`}
+                        {config.tipo_evaluacion?.tipo?.nombre || `Tipo ${config.tipo_id}`}
                         {" - "}
                         {config.tipo_evaluacion?.categoria?.nombre || ""}
                         {config.es_activo && (

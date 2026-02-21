@@ -17,7 +17,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, ChevronDown, ChevronUp, Edit, Trash2 } from "lucide-react";
+import { 
+  Plus, 
+  ChevronDown, 
+  ChevronUp, 
+  Edit, 
+  Trash2, 
+  Layers, 
+  Activity, 
+  MessageCircle, 
+  AlertTriangle,
+  FileText,
+  Link2,
+} from "lucide-react";
 import { type AspectoConEscalas, type CfgAItem, aEService, configuracionEvaluacionService, type ConfiguracionCfgACfgEResponse } from "@/src/api";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -67,7 +79,6 @@ export function AeView({
     try {
       const response = await configuracionEvaluacionService.getCfgACfgE();
       if (response.success && response.data && Array.isArray(response.data)) {
-        // Consolidar todos los cfg_a únicos de todas las configuraciones
         const aspectosMap = new Map<number, CfgAItemEnriquecido>();
         response.data.forEach((config: ConfiguracionCfgACfgEResponse) => {
           const tipoEvalNombre = config.tipo_evaluacion?.tipo?.nombre || 'Sin tipo';
@@ -87,7 +98,6 @@ export function AeView({
             });
         });
         const aspectosArray = Array.from(aspectosMap.values()).sort((a, b) => {
-          // Primero los de la configuración actual
           if (a.es_configuracion_actual !== b.es_configuracion_actual) {
             return a.es_configuracion_actual ? -1 : 1;
           }
@@ -226,206 +236,192 @@ export function AeView({
   };
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle>Relación Aspecto - Escala</CardTitle>
-              <CardDescription>
-                Aspectos configurados con sus escalas de evaluación
-              </CardDescription>
-            </div>
-            <Button onClick={() => setModalAe({ isOpen: true })}>
-              <Plus className="h-4 w-4 mr-2" />
-              Configurar A/E
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            <Badge variant="outline">
-              Aspectos: {aspectosConEscalas.length}
-            </Badge>
-            <Badge variant="outline">
-              Opciones: {totalOpciones}
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="space-y-8 animate-in fade-in duration-700">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-50/50 p-8 rounded-[2.5rem] border border-slate-100">
+        <div className="flex items-center gap-6">
+           <div className="h-16 w-16 rounded-3xl bg-white flex items-center justify-center shadow-sm border border-slate-100">
+              <Link2 className="h-8 w-8 text-indigo-500" />
+           </div>
+           <div>
+              <h3 className="text-lg font-black text-slate-900 italic uppercase tracking-tight">Matriz de Relación</h3>
+              <p className="text-xs font-medium text-slate-400 mt-1">Vincula aspectos con escalas de valoración específicas.</p>
+              <div className="flex items-center gap-3 mt-3">
+                 <Badge className="bg-white border border-slate-200 text-slate-500 rounded-lg font-black text-[9px] uppercase tracking-tighter px-2 h-5">
+                   Aspectos: {aspectosConEscalas.length}
+                 </Badge>
+                 <Badge className="bg-white border border-slate-200 text-indigo-500 rounded-lg font-black text-[9px] uppercase tracking-tighter px-2 h-5">
+                   Total Opciones: {totalOpciones}
+                 </Badge>
+              </div>
+           </div>
+        </div>
+        <Button 
+          onClick={() => setModalAe({ isOpen: true })}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl px-6 h-12 font-bold text-xs uppercase tracking-widest shadow-lg shadow-indigo-200 transition-all active:scale-95 flex items-center gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Nueva Vinculación
+        </Button>
+      </div>
 
       {aspectosConEscalas.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground mb-4">No hay aspectos configurados</p>
-            <Button onClick={() => setModalAe({ isOpen: true })}>
-              <Plus className="h-4 w-4 mr-2" />
-              Configurar Primer Aspecto
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="bg-slate-50/50 border border-slate-100 border-dashed rounded-[3rem] p-20 text-center">
+          <Layers className="h-16 w-16 text-slate-200 mx-auto mb-6 opacity-50" />
+          <h3 className="text-xl font-black text-slate-900 italic tracking-tight uppercase mb-2">Sin relaciones configuradas</h3>
+          <p className="text-slate-400 font-medium text-sm max-w-xs mx-auto mb-8">
+            Define qué escalas de respuesta pertenecen a cada aspecto de evaluación.
+          </p>
+          <Button 
+            onClick={() => setModalAe({ isOpen: true })}
+            variant="outline"
+            className="rounded-2xl border-slate-200 text-slate-600 font-bold text-xs uppercase tracking-widest px-8"
+          >
+            Vincular ahora
+          </Button>
+        </div>
       ) : (
-        <div className="space-y-2">
+        <div className="grid gap-4">
           {aspectosConEscalas.map((aspecto) => (
-            <Card key={aspecto.id} className="overflow-hidden">
+            <Card key={aspecto.id} className="border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 rounded-[2rem] overflow-hidden bg-white">
               <div
                 onClick={() => toggleAspecto(aspecto.id)}
-                className="p-4 cursor-pointer hover:bg-muted/50 transition-colors flex items-start justify-between"
+                className="p-6 cursor-pointer hover:bg-slate-50/50 transition-colors flex items-center justify-between gap-4"
               >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-sm">{aspecto.nombre}</h3>
-                    {aspecto.es_activo && (
-                      <Badge variant="default" className="text-xs">
-                        Activo
-                      </Badge>
-                    )}
-                    {aspecto.es_cmt && (
-                      <Badge variant="secondary" className="text-xs">
-                        Comentario
-                      </Badge>
-                    )}
-                    {aspecto.es_cmt_oblig && (
-                      <Badge variant="destructive" className="text-xs">
-                        Comentario Obligatorio
-                      </Badge>
+                <div className="flex items-center gap-5 flex-1 min-w-0">
+                  <div className={`h-10 w-10 rounded-2xl flex items-center justify-center transition-all ${
+                    expandedAspecto === aspecto.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-50 text-slate-400'
+                  }`}>
+                    <Activity className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <h3 className="font-black text-slate-900 text-sm uppercase tracking-tight truncate">{aspecto.nombre}</h3>
+                      <div className="flex gap-1">
+                        {aspecto.es_activo && <Badge className="bg-emerald-50 text-emerald-600 border-none rounded-md text-[8px] font-black uppercase tracking-tighter h-4">Activo</Badge>}
+                        {aspecto.es_cmt && <Badge className="bg-blue-50 text-blue-600 border-none rounded-md text-[8px] font-black uppercase tracking-tighter h-4">Comentarios</Badge>}
+                        {aspecto.es_cmt_oblig && <Badge className="bg-rose-50 text-rose-600 border-none rounded-md text-[8px] font-black uppercase tracking-tighter h-4">Req. Feedback</Badge>}
+                      </div>
+                    </div>
+                    {aspecto.descripcion && (
+                      <p className="text-[11px] font-medium text-slate-400 italic truncate">
+                        {aspecto.descripcion}
+                      </p>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {aspecto.descripcion}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Orden: {aspecto.orden} • Opciones: {aspecto.opciones.length}
-                  </p>
                 </div>
-                <div className="ml-4 flex items-center gap-2 flex-shrink-0">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openEditAspecto(aspecto);
-                    }}
-                    disabled={aspectosGlobales.length <= 1 || isLoadingAspectos}
-                    title="Editar aspecto"
-                  >
-                    <Edit className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteAspectoCfgAId(aspecto.cfg_a_id);
-                      setDeleteAspectoNombre(aspecto.nombre);
-                    }}
-                    title="Eliminar aspecto"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                  {expandedAspecto === aspecto.id ? (
-                    <ChevronUp className="h-5 w-5 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                  )}
+
+                <div className="flex items-center gap-2">
+                   <div className="hidden sm:flex flex-col items-end mr-4">
+                      <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Orden {aspecto.orden}</span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{aspecto.opciones.length} Opciones vinculadas</span>
+                   </div>
+                   <div className="flex items-center gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEditAspecto(aspecto);
+                      }}
+                      disabled={aspectosGlobales.length <= 1 || isLoadingAspectos}
+                      className="h-9 w-9 rounded-xl hover:bg-indigo-50 hover:text-indigo-600"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteAspectoCfgAId(aspecto.cfg_a_id);
+                        setDeleteAspectoNombre(aspecto.nombre);
+                      }}
+                      className="h-9 w-9 rounded-xl hover:bg-rose-50 hover:text-rose-600"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <div className="ml-2">
+                       {expandedAspecto === aspecto.id ? (
+                         <ChevronUp className="h-5 w-5 text-slate-300" />
+                       ) : (
+                         <ChevronDown className="h-5 w-5 text-slate-300" />
+                       )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {expandedAspecto === aspecto.id && (
-                <div className="border-t bg-muted/30 p-4">
-                  <div className="space-y-3">
-                    {/* Verificar si es un aspecto sin escalas (solo comentarios) */}
+                <div className="px-6 pb-6 animate-in slide-in-from-top-2 duration-500">
+                  <div className="bg-slate-50/50 rounded-[1.5rem] p-6 border border-slate-100 shadow-inner">
                     {aspecto.opciones.length === 1 && aspecto.opciones[0].id === null ? (
-                      <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
-                        <div className="flex items-start gap-3">
-                          <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                            <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                            </svg>
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
-                              📝 Aspecto sin escalas (Solo comentarios)
-                            </p>
-                            <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                              Este aspecto está configurado para recibir únicamente comentarios de texto, sin calificación numérica.
-                            </p>
-                            {aspecto.es_cmt_oblig && (
-                              <Badge variant="destructive" className="mt-2 text-xs">
-                                Comentario obligatorio
-                              </Badge>
-                            )}
-                          </div>
+                      <div className="flex items-start gap-4 p-4 bg-white rounded-2xl border border-slate-100">
+                        <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
+                          <MessageCircle className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black text-slate-900 uppercase tracking-tight">Modo Comentario Exclusivo</p>
+                          <p className="text-[11px] font-medium text-slate-400 mt-1 italic">
+                            Este aspecto solo recolectará retroalimentación cualitativa.
+                          </p>
                         </div>
                       </div>
                     ) : (
-                      <>
-                        <p className="text-xs font-semibold text-muted-foreground uppercase">
-                          Escalas de Evaluación
-                        </p>
-                        {aspecto.opciones.length === 0 ? (
-                          <p className="text-sm text-muted-foreground italic">
-                            No hay opciones configuradas
-                          </p>
-                        ) : (
-                          <div className="grid gap-2">
-                            {aspecto.opciones.map((opcion) => (
-                              <div
-                                key={opcion.id}
-                                className="p-3 rounded-lg border border-muted-foreground/20 bg-background"
-                              >
-                                <div className="flex items-start justify-between mb-1">
-                                  <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className="font-mono">
-                                      {opcion.sigla}
-                                    </Badge>
-                                    <h4 className="font-semibold text-sm">
-                                      {opcion.nombre}
-                                    </h4>
-                                    {opcion.puntaje && (
-                                      <Badge variant="secondary" className="text-xs">
-                                        {opcion.puntaje} pts
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <p className="text-xs text-muted-foreground mr-2">
-                                      Orden: {opcion.orden}
-                                    </p>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setEditOpcionId(opcion.a_e_id);
-                                      }}
-                                      title="Editar opción"
-                                    >
-                                      <Edit className="h-3 w-3" />
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setDeleteOpcionId(opcion.a_e_id);
-                                      }}
-                                      title="Eliminar opción"
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                </div>
-                                {opcion.descripcion && (
-                                  <p className="text-xs text-muted-foreground">
-                                    {opcion.descripcion}
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 px-2">
+                           <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mt-0.5">Escalas Vinculadas</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {aspecto.opciones.map((opcion) => (
+                            <div
+                              key={opcion.id}
+                              className="group/item flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:shadow-md hover:border-indigo-100 transition-all duration-300"
+                            >
+                              <div className="flex-1 min-w-0 pr-4">
+                                <div className="flex items-center gap-3 mb-1">
+                                  <Badge variant="outline" className="h-6 w-10 flex items-center justify-center bg-slate-50 text-slate-400 border-slate-100 rounded-lg font-black text-[9px]">
+                                    {opcion.sigla}
+                                  </Badge>
+                                  <p className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">
+                                    {opcion.nombre}
                                   </p>
-                                )}
+                                  {opcion.puntaje && (
+                                    <Badge className="bg-indigo-50 text-indigo-600 border-none rounded-md text-[9px] font-black px-1.5 h-4">
+                                      {opcion.puntaje} pts
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
-                            ))}
-                          </div>
-                        )}
-                      </>
+                              
+                              <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-all duration-300">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditOpcionId(opcion.a_e_id);
+                                  }}
+                                  className="h-8 w-8 rounded-lg hover:bg-slate-100"
+                                >
+                                  <Edit className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteOpcionId(opcion.a_e_id);
+                                  }}
+                                  className="h-8 w-8 rounded-lg hover:bg-rose-50 hover:text-rose-600"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -439,8 +435,8 @@ export function AeView({
         isOpen={Boolean(deleteOpcionId)}
         onClose={() => setDeleteOpcionId(null)}
         onConfirm={handleDeleteOpcion}
-        title="Eliminar opción aspecto-escala"
-        description="¿Estás seguro de eliminar esta relación? Esta acción no se puede deshacer."
+        title="Eliminar vinculación"
+        description="Esta acción removerá la escala seleccionada de este aspecto. ¿Deseas continuar?"
       />
 
       <ModalConfirmacion
@@ -450,11 +446,11 @@ export function AeView({
           setDeleteAspectoNombre("");
         }}
         onConfirm={handleDeleteAspecto}
-        title="Eliminar aspecto"
+        title="Eliminar Aspecto de la Matriz"
         description={
           deleteAspectoNombre
-            ? `¿Eliminar el aspecto "${deleteAspectoNombre}" y todas sus escalas?`
-            : "¿Eliminar el aspecto y todas sus escalas?"
+            ? `Se eliminará "${deleteAspectoNombre}" y todas sus vinculaciones en esta configuración.`
+            : "Se eliminará el aspecto y todas sus vinculaciones."
         }
       />
 
@@ -467,50 +463,53 @@ export function AeView({
           }
         }}
       >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Editar aspecto</DialogTitle>
-            <DialogDescription>
-              Selecciona un nuevo aspecto para reemplazar el actual en esta configuración.
+        <DialogContent className="sm:max-w-md rounded-[2.5rem] border-slate-100 shadow-2xl">
+          <DialogHeader className="p-2">
+            <DialogTitle className="text-xl font-black text-slate-900 italic uppercase tracking-tight">Cambiar Aspecto Base</DialogTitle>
+            <DialogDescription className="text-xs font-medium text-slate-400">
+              Reemplaza el aspecto actual manteniendo el contexto de la configuración.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-2">
-            <Label>Nuevo aspecto</Label>
-            <Select value={newAspectoCfgAId} onValueChange={setNewAspectoCfgAId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona un aspecto" />
-              </SelectTrigger>
-              <SelectContent>
-                {aspectosGlobales
-                  .filter((item) => item.id !== editAspecto?.cfg_a_id)
-                  .map((item) => (
-                    <SelectItem key={item.id} value={String(item.id)}>
-                      <div className="flex items-center gap-2">
-                        <span>{item.aspecto?.nombre ?? `Aspecto #${item.aspecto_id}`}</span>
-                        {item.es_configuracion_actual ? (
-                          <Badge variant="default" className="text-xs ml-2">
-                            Actual
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="text-xs ml-2">
-                            {item.tipo_evaluacion}
-                          </Badge>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-            {isLoadingAspectos && (
-              <p className="text-xs text-muted-foreground">Cargando aspectos disponibles...</p>
-            )}
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Nuevo Descriptor</Label>
+              <Select value={newAspectoCfgAId} onValueChange={setNewAspectoCfgAId}>
+                <SelectTrigger className="h-12 rounded-2xl border-slate-100 bg-slate-50/50 focus:ring-indigo-500 font-bold text-sm">
+                  <SelectValue placeholder="Seleccionar aspecto disponible..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border-slate-100 shadow-xl">
+                  {aspectosGlobales
+                    .filter((item) => item.id !== editAspecto?.cfg_a_id)
+                    .map((item) => (
+                      <SelectItem key={item.id} value={String(item.id)} className="rounded-xl focus:bg-indigo-50 focus:text-indigo-600 py-3">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-bold text-sm">{item.aspecto?.nombre ?? `Aspecto #${item.aspecto_id}`}</span>
+                          <div className="flex items-center gap-2">
+                            {item.es_configuracion_actual ? (
+                              <Badge className="bg-indigo-50 text-indigo-600 border-none rounded-md text-[8px] font-black h-4 px-1.5">ACTUAL</Badge>
+                            ) : (
+                              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{item.tipo_evaluacion}</span>
+                            )}
+                          </div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              {isLoadingAspectos && (
+                <div className="flex items-center gap-2 px-1">
+                   <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
+                   <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Sincronizando catálogo...</p>
+                </div>
+              )}
+            </div>
           </div>
 
-          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2">
+          <DialogFooter className="gap-2 sm:gap-0 mt-4">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               onClick={() => {
                 if (!isUpdatingAspecto) {
                   setEditAspecto(null);
@@ -518,11 +517,16 @@ export function AeView({
                 }
               }}
               disabled={isUpdatingAspecto}
+              className="rounded-2xl font-bold text-xs uppercase tracking-widest"
             >
-              Cancelar
+              Cerrar
             </Button>
-            <Button onClick={handleUpdateAspecto} disabled={isUpdatingAspecto}>
-              {isUpdatingAspecto ? "Actualizando..." : "Actualizar"}
+            <Button 
+              onClick={handleUpdateAspecto} 
+              disabled={isUpdatingAspecto}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl px-6 font-bold text-xs uppercase tracking-widest shadow-lg shadow-indigo-100 transition-all active:scale-95"
+            >
+              {isUpdatingAspecto ? "Procesando..." : "Confirmar Cambio"}
             </Button>
           </DialogFooter>
         </DialogContent>

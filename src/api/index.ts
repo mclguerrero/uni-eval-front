@@ -104,15 +104,19 @@ export {
   categoriaTipoService,
   configuracionTipoRolService,
   categoriaTipoMapService,
+  tipoFormService,
 } from './services/app/t-a-e/tipo.service';
 export type {
   Tipo,
+  TipoForm,
   CategoriaTipo,
   ConfiguracionTipoRol,
   TipoMapItem,
   CategoriaTipoItemsResponse,
   CreateCategoriaTipoMapInput,
   CreateCategoriaTipoMapResponse,
+  CreateTipoFormInput,
+  UpdateTipoFormInput,
 } from './services/app/t-a-e/tipo.service';
 
 export {

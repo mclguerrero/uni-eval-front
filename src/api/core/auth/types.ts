@@ -70,6 +70,7 @@ export const APP_ROLE_IDS = {
 export const AUTH_ROLE_IDS = {
   ESTUDIANTE: 1,
   DOCENTE: 2,
+  DOCENTE_APOYO: 15,
   ADMIN: 3,
 } as const;
 
@@ -85,6 +86,17 @@ export const APP_ROLE_ID_TO_NAME: Record<number, AppRoleName> = {
 export const APP_ROLE_NAME_TO_ID: Record<AppRoleName, number> = {
   'Admin': APP_ROLE_IDS.ADMIN,
   'Director Programa': APP_ROLE_IDS.DIRECTOR_PROGRAMA,
+} as const;
+
+// ========================
+// MAPPING AUTH - IDs a Nombres (Para presentación de roles de autenticación)
+// ========================
+
+export const AUTH_ROLE_ID_TO_NAME: Record<number, string> = {
+  [AUTH_ROLE_IDS.ESTUDIANTE]: 'Estudiante',
+  [AUTH_ROLE_IDS.DOCENTE]: 'Docente Planta',
+  [AUTH_ROLE_IDS.DOCENTE_APOYO]: 'Docente de Apoyo',
+  [AUTH_ROLE_IDS.ADMIN]: 'Admin',
 } as const;
 
 // ========================

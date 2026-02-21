@@ -8,16 +8,17 @@ import { useToast } from "@/hooks/use-toast"
 import { authService, configuracionEvaluacionService, evalService } from "@/src/api"
 import { Progress } from "@/components/ui/progress"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/src/api/core/auth/useAuth"
 import type { ConfiguracionTipo, EvalByUserItem, EvalGeneradaItem, UserProfile } from "@/src/api";
 import { FileText, AlertCircle } from "lucide-react"
 import { ModalEvaluacionesCreadas } from "../components/ModalEvaluacionesCreadas"
-import { Header } from "../components/Header"
 import EvaluacionCard from "../components/CfgEvaluacionCard"
 import Image from "next/image"
 
 export default function EstudianteBienvenida() {
   const router = useRouter()
   const { toast } = useToast()
+  const { user } = useAuth()
   const [perfil, setPerfil] = useState<UserProfile | null>(null)
   const [configuraciones, setConfiguraciones] = useState<ConfiguracionTipo[]>([])
   const [loading, setLoading] = useState(true)
@@ -120,9 +121,30 @@ export default function EstudianteBienvenida() {
             ? responseData.data
             : []
 
-        // Filtrar solo configuraciones activas
-        const configuracionesActivas = configuracionesData.filter((config: ConfiguracionTipo) => config.es_activo)
-        setConfiguraciones(configuracionesActivas)
+        // Filtrar configuraciones según criterios
+        const configuracionesFiltradas = configuracionesData.filter((config: ConfiguracionTipo) => {
+          // 1. Debe estar activa
+          if (!config.es_activo) return false
+
+          // 2. Verificar que los roles requeridos sean válidos para el usuario
+          if (!user || !user.rolesAuthIds) return false
+
+          // Si tiene rolesRequeridos definidos, verificar que el usuario tenga al menos uno de esos roles
+          if (config.rolesRequeridos && config.rolesRequeridos.length > 0) {
+            const tieneRolRequerido = config.rolesRequeridos.some((rolRequerido) => {
+              // Solo considerar roles de AUTH origen
+              if (rolRequerido.origen !== 'AUTH') return false
+              // Verificar si el usuario tiene este rol
+              return user.rolesAuthIds.includes(rolRequerido.rol_origen_id)
+            })
+            return tieneRolRequerido
+          }
+
+          // Si no tiene rolesRequeridos, mostrar la configuración
+          return true
+        })
+
+        setConfiguraciones(configuracionesFiltradas)
       } catch (error) {
         console.error("Error al cargar configuraciones:", error)
         toast({
@@ -136,7 +158,7 @@ export default function EstudianteBienvenida() {
     }
 
     cargarConfiguraciones()
-  }, [toast])
+  }, [toast, user])
 
   useEffect(() => {
     const cargarEvaluacionesPorConfiguracion = async () => {
@@ -203,11 +225,11 @@ export default function EstudianteBienvenida() {
         // Tipos 1 y 4 (Evaluación y Autoevaluación por Materia): Ir al dashboard
         // Tipos 2 y 3 (Encuesta y Autoevaluación): Ir directo a evaluar
         if (tipoFormId === 1 || tipoFormId === 4) {
-          router.push(`/estudiante/dashboard/${configId}`)
+          router.push(`/docente/eval/dashboard/${configId}`)
         } else {
           const firstEvalId = evaluacionesExistentes[0]?.id
           const query = firstEvalId ? `?evalId=${firstEvalId}` : ""
-          router.push(`/estudiante/evaluar/${configId}${query}`)
+          router.push(`/docente/eval/evaluar/${configId}${query}`)
         }
         return
       }
@@ -246,13 +268,15 @@ export default function EstudianteBienvenida() {
         const query = firstEvalId ? `?evalId=${firstEvalId}` : ""
         setIsCreatingEvaluaciones(false)
         setModalEvaluacionesOpen(false)
-        router.push(`/estudiante/evaluar/${configId}${query}`)
+        router.push(`/docente/eval/evaluar/${configId}${query}`)
         return
       }
 
       // Tipos 1 y 4 (Evaluación y Autoevaluación por Materia): Mostrar modal y ir al dashboard
       await new Promise(resolve => setTimeout(resolve, 1200))
       setIsCreatingEvaluaciones(false)
+      setModalEvaluacionesOpen(false)
+      router.push(`/docente/eval/dashboard/${configId}`)
     } catch (error) {
       console.error("❌ Error al generar evaluaciones:", error)
       setIsCreatingEvaluaciones(false)

@@ -15,6 +15,12 @@ const docenteMenuItems: SidebarMenuItem[] = [
     icon: BookOpen,
     label: "Mis Materias",
     description: "Materias asignadas"
+  },
+  {
+    href: "/docente/eval/bienvenida",
+    icon: FileText,
+    label: "Mis Evaluaciones",
+    description: "Evaluaciones asignadas"
   }
 ]
 

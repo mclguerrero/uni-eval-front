@@ -19,6 +19,14 @@ export interface Tipo {
 	fecha_actualizacion?: string | null;
 }
 
+export interface TipoForm {
+	id: number;
+	nombre: string;
+	descripcion?: string | null;
+	fecha_creacion?: string | null;
+	fecha_actualizacion?: string | null;
+}
+
 export interface CategoriaTipo {
 	id: number;
 	nombre: string;
@@ -41,6 +49,16 @@ export interface CreateTipoInput {
 }
 
 export interface UpdateTipoInput {
+	nombre?: string;
+	descripcion?: string | null;
+}
+
+export interface CreateTipoFormInput {
+	nombre: string;
+	descripcion?: string | null;
+}
+
+export interface UpdateTipoFormInput {
 	nombre?: string;
 	descripcion?: string | null;
 }
@@ -158,6 +176,12 @@ class ConfiguracionTipoRolService extends BaseService<
 	}
 }
 
+class TipoFormService extends BaseService<TipoForm, CreateTipoFormInput, UpdateTipoFormInput> {
+	constructor() {
+		super('/tipo/form');
+	}
+}
+
 class CategoriaTipoMapService {
 	/**
 	 * Listar tipos asociados a una categoría
@@ -211,3 +235,4 @@ export const tiposEvaluacionService = tipoService;
 export const categoriaTipoService = new CategoriaTipoService();
 export const configuracionTipoRolService = new ConfiguracionTipoRolService();
 export const categoriaTipoMapService = new CategoriaTipoMapService();
+export const tipoFormService = new TipoFormService();

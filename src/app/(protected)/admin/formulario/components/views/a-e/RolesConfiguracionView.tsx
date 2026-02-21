@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, ShieldCheck, Users, Info, Activity } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { cfgTRolService, type RolAsignado } from "@/src/api";
@@ -30,7 +30,6 @@ export function RolesConfiguracionView({
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  // Roles que aún no están asignados
   const rolesNoAsignados = rolesDisponibles.filter(
     rol => !rolesAsignados.some(cfgRol => cfgRol.rol_mix_id === rol.id)
   );
@@ -71,9 +70,6 @@ export function RolesConfiguracionView({
   const handleEliminarRol = async (rolMixId: number) => {
     try {
       setLoading(true);
-      // Buscar la relación a eliminar - necesitamos obtener el ID de la relación
-      // Para esto, debemos hacer una consulta previa o mantener un mapeo
-      // Por ahora, usamos el endpoint de eliminación por query params
       const response = await cfgTRolService.deleteByConfigAndRole(cfgTId, rolMixId);
 
       if (response.success) {
@@ -102,85 +98,112 @@ export function RolesConfiguracionView({
   };
 
   return (
-    <div className="space-y-4">
-      {/* Roles Asignados */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Roles Asignados</CardTitle>
-          <CardDescription>
-            Roles que pueden realizar esta evaluación
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {rolesAsignados.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <div className="text-sm">No hay roles asignados</div>
-              <div className="text-xs mt-1">Asigna al menos un rol para habilitar esta evaluación</div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {rolesAsignados.map((rolAsignado) => (
-                <div
-                  key={rolAsignado.rol_mix_id}
-                  className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:border-gray-300 dark:border-gray-800 dark:hover:border-gray-700"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">{rolAsignado.nombre}</div>
-                      <div className="text-xs text-muted-foreground">
-                        Origen: <Badge variant="outline" className="ml-1">{rolAsignado.origen}</Badge>
-                      </div>
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleEliminarRol(rolAsignado.rol_mix_id)}
-                    disabled={loading || loadingId === rolAsignado.rol_mix_id}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+    <div className="space-y-10 animate-in fade-in duration-700">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-50/50 p-8 rounded-[2.5rem] border border-slate-100">
+        <div className="flex items-center gap-6">
+           <div className="h-14 w-14 rounded-2xl bg-white flex items-center justify-center shadow-sm border border-slate-100">
+              <ShieldCheck className="h-7 w-7 text-indigo-500" />
+           </div>
+           <div>
+              <h3 className="text-lg font-black text-slate-900 italic uppercase tracking-tight">Acceso y Privilegios</h3>
+              <p className="text-xs font-medium text-slate-400 mt-1">Configura qué roles institucionales tienen permiso para ejecutar esta evaluación.</p>
+           </div>
+        </div>
+        <div className="flex gap-4">
+           <Badge className="bg-indigo-50 text-indigo-600 border-none rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest h-10 flex items-center gap-2">
+             <Users className="h-3 w-3" />
+             {rolesAsignados.length} Roles con Permiso
+           </Badge>
+        </div>
+      </div>
 
-      {/* Roles Disponibles para Agregar */}
-      {rolesNoAsignados.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Roles Disponibles</CardTitle>
-            <CardDescription>
-              Agregar nuevos roles a esta evaluación
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {rolesNoAsignados.map((rol) => (
-                <div
-                  key={rol.id}
-                  className="relative"
-                >
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start h-auto py-2"
-                    onClick={() => handleAgregarRol(rol.id)}
-                    disabled={loading}
-                  >
-                    <Plus className="h-4 w-4 mr-2 flex-shrink-0" />
-                    <span className="text-left overflow-hidden">
-                      <div className="font-medium text-sm">{rol.nombre}</div>
-                      <div className="text-xs text-muted-foreground">{rol.origen}</div>
-                    </span>
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Roles Asignados Section */}
+        <div className="space-y-6">
+           <div className="flex items-center gap-2 px-4">
+              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mt-0.5">Control de Autorización</span>
+           </div>
+           
+           <div className="space-y-3">
+             {rolesAsignados.length === 0 ? (
+               <div className="bg-slate-50/50 border border-slate-100 border-dashed rounded-[2rem] p-12 text-center">
+                 <Info className="h-10 w-10 text-slate-200 mx-auto mb-4" />
+                 <p className="text-slate-400 font-medium text-xs italic italic">No hay roles autorizados para esta configuración.</p>
+               </div>
+             ) : (
+               rolesAsignados.map((rolAsignado) => (
+                 <Card
+                   key={rolAsignado.rol_mix_id}
+                   className="border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden bg-white group"
+                 >
+                   <div className="p-4 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4 min-w-0">
+                         <div className="h-10 w-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500 border border-emerald-100 group-hover:scale-110 transition-transform">
+                            <ShieldCheck className="h-5 w-5" />
+                         </div>
+                         <div className="min-w-0">
+                            <h4 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">{rolAsignado.nombre}</h4>
+                            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-tighter mt-0.5">Sistema: {rolAsignado.origen}</p>
+                         </div>
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleEliminarRol(rolAsignado.rol_mix_id)}
+                        disabled={loading || loadingId === rolAsignado.rol_mix_id}
+                        className="h-9 w-9 rounded-xl hover:bg-rose-50 hover:text-rose-600 group-hover:opacity-100 opacity-0 transition-all duration-300"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                   </div>
+                 </Card>
+               ))
+             )}
+           </div>
+        </div>
+
+        {/* Roles Disponibles Section */}
+        <div className="space-y-6">
+           <div className="flex items-center gap-2 px-4">
+              <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mt-0.5">Roles del Directorio</span>
+           </div>
+
+           <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+             {rolesNoAsignados.length === 0 ? (
+               <div className="bg-slate-50/50 border border-slate-100 border-dashed rounded-[2rem] p-12 text-center">
+                 <Activity className="h-10 w-10 text-slate-200 mx-auto mb-4" />
+                 <p className="text-slate-400 font-medium text-xs italic italic">Se han asignado todos los roles disponibles.</p>
+               </div>
+             ) : (
+               <div className="grid grid-cols-1 gap-2">
+                 {rolesNoAsignados.map((rol) => (
+                   <button
+                     key={rol.id}
+                     onClick={() => handleAgregarRol(rol.id)}
+                     disabled={loading}
+                     className="group flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-white hover:border-indigo-100 hover:shadow-lg transition-all duration-300 text-left disabled:opacity-50"
+                   >
+                     <div className="flex items-center gap-4 min-w-0">
+                        <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center text-slate-400 group-hover:text-indigo-500 border border-slate-200 group-hover:border-indigo-100 transition-colors">
+                           <Plus className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0">
+                           <h4 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight group-hover:text-indigo-600">{rol.nombre}</h4>
+                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-0.5 block">{rol.origen}</span>
+                        </div>
+                     </div>
+                     <Badge className="bg-white text-slate-400 group-hover:bg-indigo-600 group-hover:text-white border border-slate-200 group-hover:border-indigo-600 transition-all rounded-lg text-[8px] font-black h-5 px-2">
+                        VINCULAR
+                     </Badge>
+                   </button>
+                 ))}
+               </div>
+             )}
+           </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -150,14 +150,62 @@ export function ModalConfiguracionEscala({
     }
   };
 
+  /**
+   * Calcula los puntajes automáticamente basado en el orden
+   * Fórmula: Valor = (posición - 1) × (5 / (N - 1))
+   * Donde N es el número de escalas seleccionadas
+   */
+  const calculateScoresByOrder = (rows: EscalaRow[]): EscalaRow[] => {
+    const selectedRows = rows.filter((row) => row.selected);
+
+    if (selectedRows.length === 0) {
+      return rows.map((row) => ({ ...row, puntaje: 0 }));
+    }
+
+    if (selectedRows.length === 1) {
+      return rows.map((row) =>
+        row.selected ? { ...row, puntaje: 5 } : row
+      );
+    }
+
+    // Ordenar por el campo orden
+    const sortedSelected = [...selectedRows].sort((a, b) => a.orden - b.orden);
+
+    // Calcular puntajes
+    const N = selectedRows.length;
+    const scoreMap = new Map<number, number>();
+
+    sortedSelected.forEach((row, index) => {
+      const posicion = index + 1; // 1-indexed
+      const puntaje = (posicion - 1) * (5 / (N - 1));
+      scoreMap.set(row.escala_id, Math.round(puntaje * 100) / 100); // Redondear a 2 decimales
+    });
+
+    // Aplicar los puntajes calculados a todas las filas
+    return rows.map((row) => ({
+      ...row,
+      puntaje: scoreMap.has(row.escala_id) ? scoreMap.get(row.escala_id)! : row.puntaje,
+    }));
+  };
+
   const updateRow = (categoriaId: number, escalaId: number, updates: Partial<EscalaRow>) => {
     setRowsByCategory((prev) => {
       const rows = prev[categoriaId] ?? [];
+      const updatedRows = rows.map((row) =>
+        row.escala_id === escalaId ? { ...row, ...updates } : row
+      );
+
+      // Si el cambio afecta la selección u orden, recalcular puntajes
+      if (updates.selected !== undefined || updates.orden !== undefined) {
+        return {
+          ...prev,
+          [categoriaId]: calculateScoresByOrder(updatedRows),
+        };
+      }
+
       return {
         ...prev,
-        [categoriaId]: rows.map((row) =>
-          row.escala_id === escalaId ? { ...row, ...updates } : row
-        ),
+        [categoriaId]: updatedRows,
       };
     });
   };
@@ -332,11 +380,8 @@ export function ModalConfiguracionEscala({
                                             type="number"
                                             step="0.1"
                                             value={row.puntaje}
-                                            onChange={(e) =>
-                                              updateRow(categoria.id, row.escala_id, {
-                                                puntaje: Number(e.target.value),
-                                              })
-                                            }
+                                            readOnly
+                                            className="bg-muted cursor-not-allowed"
                                           />
                                         </TableCell>
                                         <TableCell>

@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import {
   Select,
@@ -423,63 +425,88 @@ export default function Filtros({
   // Loading skeleton
   if (loadingData) {
     return (
-      <div className="rounded-lg border border-border bg-card p-6 mb-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="h-5 w-5 rounded bg-muted animate-pulse" />
-          <div className="h-5 w-32 rounded bg-muted animate-pulse" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="space-y-2">
-              <div className="h-3 w-16 rounded bg-muted animate-pulse" />
-              <div className="h-9 rounded-md bg-muted animate-pulse" />
+      <Card className="rounded-[2.5rem] border-2 border-slate-100 shadow-md bg-white overflow-hidden">
+        <CardHeader className="pb-6 border-b border-slate-50 bg-slate-50/50">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-12 w-12 rounded-2xl bg-slate-100" />
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-64" />
             </div>
-          ))}
-        </div>
-      </div>
-    )
+          </div>
+        </CardHeader>
+        <CardContent className="p-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <div className="space-y-3">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full rounded-xl" />
+            </div>
+            <div className="space-y-3">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full rounded-xl" />
+            </div>
+          </div>
+          <Separator className="mb-8" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="space-y-3">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-10 w-full rounded-xl" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
     <TooltipProvider>
-      <div className="rounded-lg border border-border bg-card mb-6 overflow-hidden">
+      <Card className="rounded-[2.5rem] border-2 border-slate-100 shadow-sm bg-white hover:shadow-md transition-all duration-500 overflow-hidden">
         {/* Header bar */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-card">
-          <div className="flex items-center gap-3">
-            <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-semibold text-foreground tracking-tight">
-              Filtros de Evaluación
-            </h3>
+        <CardHeader className="flex flex-row items-center justify-between px-8 py-5 border-b border-slate-50 bg-slate-50/50 space-y-0">
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-10 rounded-xl bg-white shadow-sm border border-slate-200 flex items-center justify-center">
+              <SlidersHorizontal className="h-5 w-5 text-slate-600" />
+            </div>
+            <div>
+              <CardTitle className="text-lg font-bold text-slate-800">
+                Filtros Inteligentes
+              </CardTitle>
+              <CardDescription className="text-xs font-medium text-slate-500">
+                Refina la arquitectura de datos institucional
+              </CardDescription>
+            </div>
             {filtrosActivos > 0 && (
               <Badge
                 variant="default"
-                className="h-5 min-w-5 px-1.5 text-[10px] font-bold rounded-full"
+                className="h-6 min-w-6 px-2 text-[10px] font-black rounded-full bg-blue-600 shadow-md shadow-blue-200"
               >
                 {filtrosActivos}
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {filtrosActivos > 0 && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={onLimpiarFiltros}
                 disabled={loading}
-                className="h-7 px-2.5 text-xs text-muted-foreground hover:text-destructive gap-1.5"
+                className="h-9 px-4 text-[10px] font-black uppercase tracking-widest text-slate-500 bg-white hover:text-rose-600 hover:bg-rose-50 border-slate-200 rounded-xl transition-all"
               >
-                <RotateCcw className="h-3 w-3" />
-                Limpiar
+                <RotateCcw className="h-3.5 w-3.5 mr-2" />
+                Resetear Dashboard
               </Button>
             )}
           </div>
-        </div>
+        </CardHeader>
 
         {/* Active filter chips */}
         {filtrosActivos > 0 && (
-          <div className="flex items-center gap-2 px-5 py-2.5 bg-muted/40 border-b border-border flex-wrap">
-            <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground mr-1">
-              Activos
+          <div className="flex items-center gap-3 px-8 py-3 bg-blue-50/30 border-b border-slate-50 flex-wrap">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400 mr-2">
+              Segmentación Activa:
             </span>
             {filtros.sedeSeleccionada && (
               <FilterChip
@@ -513,7 +540,7 @@ export default function Filtros({
         )}
 
         {/* Filter fields */}
-        <div className="p-5">
+        <CardContent className="p-8">
           {/* Required row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
             <div className="space-y-1.5">
@@ -540,7 +567,7 @@ export default function Filtros({
                   {configuraciones.map((config) => (
                     <SelectItem key={config.id} value={String(config.id)}>
                       <span className="flex items-center gap-2">
-                        {config.tipo_evaluacion?.tipo?.nombre || `Tipo ${config.tipo_evaluacion_id}`}
+                        {config.tipo_evaluacion?.tipo?.nombre || `Tipo ${config.tipo_id}`}
                         {" - "}
                         {config.tipo_evaluacion?.categoria?.nombre || ""}
                         {config.es_activo && (
@@ -626,7 +653,7 @@ export default function Filtros({
               onChange={(v) => handleFiltroChange('grupoSeleccionado', v)}
             />
           </div>
-        </div>
+        </CardContent>
 
         {/* Configuration details collapsible */}
         {configuracionSeleccionada && (
@@ -698,7 +725,7 @@ export default function Filtros({
             </CollapsibleContent>
           </Collapsible>
         )}
-      </div>
+      </Card>
     </TooltipProvider>
   )
 }

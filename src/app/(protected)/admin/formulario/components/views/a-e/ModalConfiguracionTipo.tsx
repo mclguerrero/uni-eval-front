@@ -23,7 +23,9 @@ import { useToast } from "@/hooks/use-toast";
 import {
   categoriaTipoService,
   categoriaTipoMapService,
+  tipoFormService,
   type CategoriaTipo,
+  type TipoForm,
   type TipoMapItem,
 } from "@/src/api";
 import {
@@ -53,13 +55,14 @@ export function ModalConfiguracionTipo({
   const [categorias, setCategorias] = useState<CategoriaTipo[]>([]);
   const [selectedCategoria, setSelectedCategoria] = useState<string>("");
   const [tipos, setTipos] = useState<TipoMapItem[]>([]);
+  const [tipoForms, setTipoForms] = useState<TipoForm[]>([]);
   
   // Formulario
   const [formData, setFormData] = useState<CreateConfiguracionTipoInput>({
-    tipo_evaluacion_id: 0,
+    tipo_id: 0,
+    tipo_form_id: 1,
     fecha_inicio: "",
     fecha_fin: "",
-    es_evaluacion: true,
     es_cmt_gen: true,
     es_cmt_gen_oblig: true,
     es_activo: true,
@@ -71,20 +74,20 @@ export function ModalConfiguracionTipo({
     // Limpiar formulario
     if (configuracion) {
       setFormData({
-        tipo_evaluacion_id: configuracion.tipo_evaluacion_id,
+        tipo_id: configuracion.tipo_id,
+        tipo_form_id: configuracion.tipo_form_id,
         fecha_inicio: configuracion.fecha_inicio?.split('T')[0] || "",
         fecha_fin: configuracion.fecha_fin?.split('T')[0] || "",
-        es_evaluacion: configuracion.es_evaluacion ?? true,
         es_cmt_gen: configuracion.es_cmt_gen ?? true,
         es_cmt_gen_oblig: configuracion.es_cmt_gen_oblig ?? true,
         es_activo: configuracion.es_activo ?? true,
       });
     } else {
       setFormData({
-        tipo_evaluacion_id: 0,
+        tipo_id: 0,
+        tipo_form_id: 1,
         fecha_inicio: "",
         fecha_fin: "",
-        es_evaluacion: true,
         es_cmt_gen: true,
         es_cmt_gen_oblig: true,
         es_activo: true,
@@ -93,6 +96,7 @@ export function ModalConfiguracionTipo({
     
     setError(null);
     loadCategorias();
+    loadTipoForms();
   }, [isOpen, configuracion]);
 
   useEffect(() => {
@@ -115,12 +119,31 @@ export function ModalConfiguracionTipo({
         setCategorias(items);
         
         // Si estamos editando, buscar la categoría del tipo actual
-        if (configuracion && configuracion.tipo_evaluacion_id) {
-          await findAndSetCategoriaForTipo(items, configuracion.tipo_evaluacion_id);
+        if (configuracion && configuracion.tipo_id) {
+          await findAndSetCategoriaForTipo(items, configuracion.tipo_id);
         }
       }
     } catch (err) {
       console.error("Error loading categorias:", err);
+    }
+  };
+
+  const loadTipoForms = async () => {
+    try {
+      const response = await tipoFormService.getAll({ page: 1, limit: 100 });
+      if (response.success && response.data) {
+        const items = Array.isArray(response.data?.data)
+          ? response.data.data
+          : Array.isArray(response.data)
+            ? response.data
+            : [];
+        setTipoForms(items);
+      } else {
+        setTipoForms([]);
+      }
+    } catch (err) {
+      console.error("Error loading tipo_form:", err);
+      setTipoForms([]);
     }
   };
 
@@ -156,7 +179,7 @@ export function ModalConfiguracionTipo({
   };
 
   const validate = () => {
-    if (!formData.tipo_evaluacion_id || formData.tipo_evaluacion_id === 0) {
+    if (!formData.tipo_id || formData.tipo_id === 0) {
       setError("Debes seleccionar un tipo de evaluación");
       return false;
     }
@@ -248,11 +271,11 @@ export function ModalConfiguracionTipo({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="tipo_evaluacion_id">Tipo de Evaluación/Encuesta *</Label>
+              <Label htmlFor="tipo_id">Tipo de Evaluación/Encuesta *</Label>
               <Select
-                value={formData.tipo_evaluacion_id.toString()}
+                value={formData.tipo_id.toString()}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, tipo_evaluacion_id: parseInt(value) })
+                  setFormData({ ...formData, tipo_id: parseInt(value) })
                 }
                 disabled={!selectedCategoria || tipos.length === 0}
               >
@@ -295,19 +318,25 @@ export function ModalConfiguracionTipo({
             </div>
 
             <div className="space-y-3 pt-2 border-t">
-              <h4 className="text-sm font-medium">Tipo de configuración</h4>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="es_evaluacion" className="cursor-pointer">
-                  Es evaluación
-                </Label>
-                <Switch
-                  id="es_evaluacion"
-                  checked={formData.es_evaluacion}
-                  onCheckedChange={(value) =>
-                    setFormData({ ...formData, es_evaluacion: value })
-                  }
-                />
-              </div>
+              <h4 className="text-sm font-medium">Tipo de formulario</h4>
+              <Select
+                value={formData.tipo_form_id.toString()}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, tipo_form_id: parseInt(value) })
+                }
+                disabled={tipoForms.length === 0}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona el tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tipoForms.map((tipoForm) => (
+                    <SelectItem key={tipoForm.id} value={tipoForm.id.toString()}>
+                      {tipoForm.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-3 pt-2 border-t">

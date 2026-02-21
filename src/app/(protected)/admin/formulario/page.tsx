@@ -1,13 +1,18 @@
-// app/admin/formulario/page.tsx
 "use client";
 
-import { useState, useEffect, type Dispatch, type SetStateAction } from "react";
+import { useState, useEffect, type Dispatch, type SetStateAction, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { 
   BookOpen, 
   Settings, 
-  CheckCircle
+  CheckCircle,
+  LayoutDashboard,
+  Layers,
+  HelpCircle,
+  Sliders,
+  Settings2,
+  Plus
 } from "lucide-react";
 import { 
   tiposEvaluacionService,
@@ -445,12 +450,65 @@ export default function FormularioPage() {
     }
   };
 
+  const handleEliminarConfiguracion = async (config: ConfiguracionTipo, onSuccess?: () => void) => {
+    setModalConfirmacion({
+      isOpen: true,
+      title: "Eliminar Configuración",
+      description: `¿Está seguro de eliminar la configuración del modelo de evaluación? Esta acción no se puede deshacer.`,
+      onConfirm: async () => {
+        try {
+          await configuracionEvaluacionService.delete(config.id);
+          toast({
+            title: "Configuración eliminada",
+            description: "La configuración ha sido eliminada correctamente.",
+          });
+          await cargarDatosIniciales();
+          if (onSuccess) onSuccess();
+        } catch (error) {
+           console.error("Error eliminando configuración:", error);
+           toast({
+             title: "Error",
+             description: "No se pudo eliminar la configuración.",
+             variant: "destructive",
+           });
+        }
+      },
+    });
+  };
+
+  const handleToggleItemStatus = async (type: ContentType, item: any) => {
+    try {
+      setLoadingItemId(item.id);
+      let service: any;
+      if (type === "tipo") service = tiposEvaluacionService;
+      else if (type === "aspecto") service = aspectosEvaluacionService;
+      else if (type === "escala") service = escalasValoracionService;
+
+      if (service) {
+        await service.updateBooleanField(item.id, "es_activo", !item.es_activo);
+        toast({
+          title: "Estado actualizado",
+          description: `El item ha sido ${!item.es_activo ? 'activado' : 'desactivado'}.`,
+        });
+        await cargarDatosIniciales();
+      }
+    } catch (error) {
+      console.error("Error toggling status:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo cambiar el estado.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingItemId(null);
+    }
+  };
+
   const handleEliminarItemFromCategoria = async (type: ContentType, item: any) => {
     try {
       setLoadingItemId(item.id);
       
       if (type === "tipo") {
-        // Obtener la categoría del item
         const categoria = categoriasTipo.find(c => 
           categoryItemsMap.tipo.get(c.id)?.some(i => i.id === item.id)
         );
@@ -493,23 +551,28 @@ export default function FormularioPage() {
   };
 
   const navItems = [
-    { id: "tipo", label: "Tipos de Evaluación", icon: BookOpen },
-    { id: "aspecto", label: "Aspectos", icon: BookOpen },
-    { id: "escala", label: "Escalas", icon: BookOpen },
-    { id: "configuracion", label: "Configuración", icon: Settings },
+    { id: "tipo", label: "Evaluaciones", icon: BookOpen, description: "Nombres y modelos" },
+    { id: "aspecto", label: "Aspectos", icon: HelpCircle, description: "Preguntas y criterios" },
+    { id: "escala", label: "Escalas", icon: Sliders, description: "Opciones de respuesta" },
+    { id: "configuracion", label: "Dashboard", icon: LayoutDashboard, description: "Gestión y creación" },
   ];
 
   return (
-    <>
-      {/* Protegido por admin/layout.tsx con useRequireRole(APP_ROLE_IDS.ADMIN) */}
-      <div className="flex h-screen bg-gray-50">
-        {/* Sidebar */}
-        <aside className="w-64 bg-white border-r border-gray-200 shadow-sm overflow-y-auto">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-bold text-gray-900">Gestión de Evaluaciones</h2>
-            <p className="text-xs text-gray-500 mt-1">Administre las configuraciones</p>
+    <div className="min-h-screen bg-slate-50/50">
+      {/* Header Premium - Light Style (Matching Dashboard) */}
+      <header className="sticky top-0 z-40 bg-white/80 border-b border-slate-100 shadow-sm backdrop-blur-xl">
+        <div className="w-full mx-auto px-8 h-20 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center border border-indigo-100/50">
+              <Settings2 className="h-5 w-5 text-indigo-600" />
+            </div>
+            <div>
+              <h1 className="text-xl font-black text-slate-900 italic tracking-tight uppercase">Arquitectura Educativa</h1>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Gestión de Instrumentos</p>
+            </div>
           </div>
-          <nav className="px-3 py-4 space-y-1">
+
+          <div className="bg-slate-100/50 p-1.5 rounded-2xl flex gap-1 border border-slate-200/50 backdrop-blur-sm">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -517,23 +580,45 @@ export default function FormularioPage() {
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id as any)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${
+                  className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
                     isActive
-                      ? "bg-blue-50 text-blue-600 border-l-4 border-blue-600"
-                      : "text-gray-700 hover:bg-gray-100"
+                      ? "bg-white text-indigo-600 shadow-sm border border-slate-200 animate-in fade-in scale-95"
+                      : "text-slate-500 hover:text-slate-900 hover:bg-white/50"
                   }`}
                 >
-                  <Icon size={20} />
-                  <span>{item.label}</span>
+                  <Icon className={`h-3.5 w-3.5 ${isActive ? "text-indigo-600" : "text-slate-400"}`} />
+                  {item.label}
                 </button>
               );
             })}
-          </nav>
-        </aside>
+          </div>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="p-8">
+          <div className="flex items-center gap-3">
+             <div className="h-4 w-[1px] bg-slate-200 mx-2" />
+             <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Live Editor</span>
+             </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="w-full mx-auto p-10 space-y-12">
+        <div className="max-w-7xl mx-auto w-full">
+           {/* Section Title & Description */}
+           <div className="mb-10 flex justify-between items-end">
+             <div>
+                <h2 className="text-3xl font-black text-slate-900 italic tracking-tighter uppercase leading-none">
+                  {navItems.find(n => n.id === activeTab)?.label}
+                </h2>
+                <p className="text-sm font-medium text-slate-400 mt-2">
+                  {navItems.find(n => n.id === activeTab)?.description}
+                </p>
+             </div>
+           </div>
+
+           <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
             {activeTab === "tipo" && (
               <CategoriesView
                 type="tipo"
@@ -546,6 +631,7 @@ export default function FormularioPage() {
                 onAddItem={(categoryId) => setModalTipoEvaluacion({ isOpen: true, tipo: undefined, categoryId })}
                 onEditItem={(item) => setModalTipoEvaluacion({ isOpen: true, tipo: item as Tipo, categoryId: undefined })}
                 onDeleteItem={(item) => handleEliminarItemFromCategoria("tipo", item)}
+                onToggleItemStatus={(item) => handleToggleItemStatus("tipo", item)}
                 pagination={categoriasTipoPagination}
                 onPageChange={(page) =>
                   handlePageChange(setCategoriasTipoParams, loadCategoriasTipo, categoriasTipoParams, page)
@@ -569,6 +655,7 @@ export default function FormularioPage() {
                 onAddItem={(categoryId) => setModalAspecto({ isOpen: true, aspecto: undefined, categoryId })}
                 onEditItem={(item) => setModalAspecto({ isOpen: true, aspecto: item as Aspecto, categoryId: undefined })}
                 onDeleteItem={(item) => handleEliminarItemFromCategoria("aspecto", item)}
+                onToggleItemStatus={(item) => handleToggleItemStatus("aspecto", item)}
                 pagination={categoriasAspectoPagination}
                 onPageChange={(page) =>
                   handlePageChange(setCategoriasAspectoParams, loadCategoriasAspecto, categoriasAspectoParams, page)
@@ -592,6 +679,7 @@ export default function FormularioPage() {
                 onAddItem={(categoryId) => setModalEscala({ isOpen: true, escala: undefined, categoryId })}
                 onEditItem={(item) => setModalEscala({ isOpen: true, escala: item as Escala, categoryId: undefined })}
                 onDeleteItem={(item) => handleEliminarItemFromCategoria("escala", item)}
+                onToggleItemStatus={(item) => handleToggleItemStatus("escala", item)}
                 pagination={categoriasEscalaPagination}
                 onPageChange={(page) =>
                   handlePageChange(setCategoriasEscalaParams, loadCategoriasEscala, categoriasEscalaParams, page)
@@ -610,14 +698,14 @@ export default function FormularioPage() {
                 setModalConfiguracionAspecto={setModalConfiguracionAspecto}
                 setModalConfiguracionEscala={setModalConfiguracionValoracion}
                 setModalAe={setModalAe}
-                handleEliminarConfiguracion={async () => {}}
+                handleEliminarConfiguracion={handleEliminarConfiguracion}
                 refreshData={cargarDatosIniciales}
                 rolesDisponibles={rolesDisponibles}
               />
             )}
-          </div>
-        </main>
-      </div>
+           </div>
+        </div>
+      </main>
 
       {/* Modales */}
       <ModalTipoEvaluacion
@@ -719,6 +807,13 @@ export default function FormularioPage() {
         cfgTId={modalConfiguracionValoracion.cfgTId}
         escalas={modalConfiguracionValoracion.escalas || escalas}
       />
-    </>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #f1f5f9; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #e2e8f0; }
+      `}</style>
+    </div>
   );
 }

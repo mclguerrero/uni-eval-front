@@ -104,14 +104,27 @@ export interface AspectoMetric {
   desviacion?: number | null;
 }
 
+export interface AspectoGroupMetrics {
+  peso: number;
+  suma_total: number;
+  total_respuestas: number;
+  promedio_general: number | null;
+  ponderado: number | null;
+  desviacion?: number | null;
+  aspectos: AspectoMetric[];
+}
+
+export interface ResultadoFinalMetrics {
+  nota_final_ponderada: number | null;
+}
+
 export interface DocenteAspectosMetrics {
   docente: string | string[];
   codigo_materia?: string | null;
-  suma_total: number;
-  total_respuestas: number;
-  promedio: number | null;
-  desviacion: number | null;
-  aspectos: AspectoMetric[];
+  escala_maxima: number;
+  evaluacion_estudiantes: AspectoGroupMetrics;
+  autoevaluacion_docente: AspectoGroupMetrics;
+  resultado_final: ResultadoFinalMetrics;
 }
 
 export interface MateriaGrupoMetric {
@@ -178,6 +191,7 @@ export interface GrupoCompletion {
 
 export interface MateriaCompletionMetrics {
   docente: string;
+  nombre_docente?: string;
   codigo_materia: string;
   grupos: GrupoCompletion[];
 }

@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer } from "recharts";
+import { Skeleton } from "@/components/ui/skeleton"
 import { 
   BarChart3, 
   CheckCircle2, 
@@ -21,7 +22,8 @@ import {
   Book,
   Users,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ChevronLeft
 } from "lucide-react";
 
 import { 
@@ -81,15 +83,27 @@ export default function GraficaPrograma({
     tipo: "completadas" | "pendientes";
     docentes: DocenteConMetricas[];
     loading: boolean;
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    };
   }>({
     programa: "",
     tipo: "completadas",
     docentes: [],
     loading: false,
+    pagination: {
+      page: 1,
+      limit: 10,
+      total: 0,
+      pages: 0,
+    },
   });
 
   // Estado para mostrar/ocultar las cards de resumen
-  const [showProgramCards, setShowProgramCards] = useState(false);
+  const [showProgramCards, setShowProgramCards] = useState(true);
 
   // Estado unificado para expandir/contraer secciones de un docente
   const [docenteExpandido, setDocenteExpandido] = useState<{ id: string | null; tipo: 'materias' | 'aspectos' | null }>({ 
@@ -128,35 +142,61 @@ export default function GraficaPrograma({
   // Handler para clic en barras
   const handleBarClick = async (
     programa: string,
-    tipo: "completadas" | "pendientes"
+    tipo: "completadas" | "pendientes",
+    page: number = 1
   ) => {
     if (!filters || !filters.cfg_t) {
       console.error("Filtros incompletos: cfg_t es requerido");
       return;
     }
 
-    setDialogData({
+    setDialogData((prev) => ({
+      ...prev,
       programa,
       tipo,
-      docentes: [],
       loading: true,
-    });
+      pagination: { ...prev.pagination, page }
+    }));
     setDialogOpen(true);
 
     try {
       const response = await metricService.getDocentes({
         ...filters,
         programa,
+        page,
+        limit: 10,
+        sortBy: "promedio_general",
+        sortOrder: "desc"
       });
 
       const docentesEnriquecidos = await Promise.all(
         response.data.map((doc) => enriquecerDocente(doc, programa))
       );
 
+      // Pre-cargar todos los aspectos de una vez
+      const aspectosMap: { [key: string]: DocenteAspectosMetrics } = {};
+      await Promise.all(
+        docentesEnriquecidos.map(async (doc) => {
+          try {
+            const aspectData = await metricService.getDocenteAspectos({
+              ...filters,
+              programa,
+              docente: doc.docente,
+            });
+            aspectosMap[doc.docente] = aspectData;
+          } catch (e) {
+            console.error(`Error cargando aspectos para ${doc.docente}`, e);
+          }
+        })
+      );
+
+      setDocenteAspectos(prev => ({ ...prev, ...aspectosMap }));
+
       setDialogData((prev) => ({
         ...prev,
         docentes: docentesEnriquecidos,
         loading: false,
+        pagination: response.pagination,
       }));
     } catch (error) {
       console.error("Error al obtener docentes:", error);
@@ -389,25 +429,23 @@ export default function GraficaPrograma({
 
   if (loading) {
     return (
-      <Card className="rounded-2xl border border-gray-200 shadow-lg bg-white">
-        <CardHeader className="pb-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-              <BarChart3 className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <CardTitle className="text-xl font-semibold text-gray-900">
-                Estadísticas por Programa
-              </CardTitle>
-              <CardDescription className="text-gray-500">
-                Cargando datos...
-              </CardDescription>
+      <Card className="rounded-[2.5rem] border-2 border-blue-100 shadow-md bg-white overflow-hidden">
+        <CardHeader className="pb-6 border-b border-blue-50 bg-blue-50/30">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-12 w-12 rounded-2xl bg-blue-100/50" />
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-64" />
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="h-[400px] flex items-center justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <CardContent className="p-8">
+          <Skeleton className="h-[400px] w-full rounded-2xl mb-6" />
+          <div className="grid grid-cols-4 gap-4">
+            <Skeleton className="h-24 rounded-2xl" />
+            <Skeleton className="h-24 rounded-2xl" />
+            <Skeleton className="h-24 rounded-2xl" />
+            <Skeleton className="h-24 rounded-2xl" />
           </div>
         </CardContent>
       </Card>
@@ -416,40 +454,36 @@ export default function GraficaPrograma({
 
   return (
     <>
-      <Card className="rounded-2xl border border-gray-200 shadow-lg bg-white hover:shadow-xl transition-all duration-300">
-        <CardHeader className="pb-4">
+      <Card className="rounded-[2.5rem] border-2 border-blue-100 shadow-md bg-white hover:shadow-xl transition-all duration-500 overflow-hidden">
+        <CardHeader className="pb-6 border-b border-blue-50 bg-blue-50/30">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center shadow-sm">
-                <BarChart3 className="h-5 w-5 text-blue-600" />
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-2xl bg-white shadow-sm border border-blue-200 flex items-center justify-center">
+                <BarChart3 className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <CardTitle className="text-xl font-semibold text-gray-900">
+                <CardTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700">
                   Estadísticas por Programa
                 </CardTitle>
-                <CardDescription className="text-gray-500 mt-1">
+                <CardDescription className="text-slate-500 text-sm font-medium mt-0.5">
                   {estadisticas.length > 0 
-                    ? "Haz clic en las barras para ver el detalle de docentes"
-                    : "Seleccione una configuración para ver las estadísticas"}
+                    ? "Detalle operativo de cumplimiento por facultad"
+                    : "Seleccione una configuración para visualizar métricas"}
                 </CardDescription>
               </div>
             </div>
 
             {/* Resumen rápido */}
             {estadisticas.length > 0 && (
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg">
-                  <CheckCircle2 className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-700">
-                    {totales.completadas} completadas
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg">
-                  <Clock className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-600">
-                    {totales.pendientes} pendientes
-                  </span>
-                </div>
+              <div className="flex items-center gap-3">
+                <Badge variant="outline" className="px-3 py-1 bg-blue-50/50 border-blue-100 text-blue-700 font-bold gap-1.5 rounded-xl">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  {totales.completadas} Realizadas
+                </Badge>
+                <Badge variant="outline" className="px-3 py-1 bg-slate-50/50 border-slate-200 text-slate-500 font-bold gap-1.5 rounded-xl">
+                  <Clock className="h-3.5 w-3.5" />
+                  {totales.pendientes} En Espera
+                </Badge>
               </div>
             )}
           </div>
@@ -562,89 +596,67 @@ export default function GraficaPrograma({
                 </div>
               </div>
 
-              {/* Botón para mostrar/ocultar cards */}
-              <div className="flex items-center justify-center mt-6">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowProgramCards(!showProgramCards)}
-                  className="gap-2"
-                >
-                  {showProgramCards ? (
-                    <>
-                      <ChevronUp className="h-4 w-4" />
-                      Ocultar resumen por programa
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown className="h-4 w-4" />
-                      Mostrar resumen por programa
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {/* Cards de resumen por programa (responsive) */}
-              {showProgramCards && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 animate-in fade-in duration-300">
+              <div className="mt-8">
+                <div className="flex items-center gap-2 mb-4 px-1">
+                  <div className="h-1.5 w-1.5 rounded-full bg-blue-500"></div>
+                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Resumen Analítico por Programa</h4>
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in duration-300">
                   {estadisticas.map((programa, index) => {
                     const { metricas } = programa;
                     const completadas = metricas.total_realizadas;
-                  const total = metricas.total_evaluaciones;
-                  const porcentajeCompletado = total > 0 ? Math.round((completadas / total) * 100) : 0;
-                  
-                  return (
-                    <div
-                      key={index}
-                      className={`p-4 rounded-xl border transition-all cursor-pointer group ${
-                        programa.selected
-                          ? "bg-blue-50/60 border-blue-300 shadow-sm"
-                          : "bg-gray-50 border-gray-100 hover:border-blue-200 hover:bg-blue-50/30"
-                      }`}
-                      onClick={() => handleBarClick(programa.nombre, "completadas")}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <GraduationCap className="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
-                        <span className="text-xs font-medium text-gray-500 truncate">
-                          {programa.nombre}
-                        </span>
-                        {programa.selected && (
-                          <Badge variant="secondary" className="ml-auto text-[10px]">
-                            Seleccionado
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-end justify-between">
-                        <div>
-                          <p className="text-2xl font-bold text-gray-900">
-                            {porcentajeCompletado}%
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {completadas}/{total}
-                          </p>
+                    const total = metricas.total_evaluaciones;
+                    const porcentajeCompletado = total > 0 ? Math.round((completadas / total) * 100) : 0;
+                    
+                    return (
+                      <div
+                        key={index}
+                        className={`p-4 rounded-2xl border transition-all cursor-pointer group ${
+                          programa.selected
+                            ? "bg-blue-50/60 border-blue-300 shadow-sm"
+                            : "bg-white border-gray-100 hover:border-blue-200 hover:shadow-md hover:bg-slate-50/50"
+                        }`}
+                        onClick={() => handleBarClick(programa.nombre, "completadas")}
+                      >
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className={`p-1.5 rounded-lg ${programa.selected ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400 group-hover:bg-blue-50 group-hover:text-blue-500'} transition-colors`}>
+                            <GraduationCap className="h-3.5 w-3.5" />
+                          </div>
+                          <span className="text-[10px] font-bold text-gray-400 group-hover:text-gray-600 transition-colors uppercase tracking-tight truncate">
+                            {programa.nombre}
+                          </span>
                         </div>
-                        <div
-                          className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                            porcentajeCompletado >= 80
-                              ? "bg-green-100 text-green-700"
+                        <div className="flex items-end justify-between">
+                          <div>
+                            <p className="text-2xl font-black text-gray-900 leading-none">
+                              {porcentajeCompletado}%
+                            </p>
+                            <p className="text-[10px] items-center flex gap-1 font-bold text-gray-400 mt-1 uppercase tracking-tighter">
+                              {completadas} / {total} <span className="text-[8px] opacity-50">EVAL</span>
+                            </p>
+                          </div>
+                          <div
+                            className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              porcentajeCompletado >= 80
+                                ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                                : porcentajeCompletado >= 60
+                                ? "bg-amber-50 text-amber-600 border border-amber-100"
+                                : "bg-rose-50 text-rose-600 border border-rose-100"
+                            }`}
+                          >
+                            {porcentajeCompletado >= 80
+                              ? "Óptimo"
                               : porcentajeCompletado >= 60
-                              ? "bg-yellow-100 text-yellow-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          <TrendingUp className="h-3 w-3" />
-                          {porcentajeCompletado >= 80
-                            ? "Alto"
-                            : porcentajeCompletado >= 60
-                            ? "Medio"
-                            : "Bajo"}
+                              ? "Medio"
+                              : "Crítico"}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
                 </div>
-              )}
+              </div>
             </>
           )}
         </CardContent>
@@ -698,8 +710,8 @@ export default function GraficaPrograma({
                               <span className="ml-1.5">{estadoInfo.label}</span>
                             </Badge>
                           </div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                            {docente.docente}
+                          <h3 className="text-lg font-bold text-gray-900 mb-1 tracking-tight">
+                            {docente.nombre_docente || docente.docente}
                           </h3>
                           <div className="flex items-center gap-4 text-sm text-gray-600">
                             <span className="flex items-center gap-1">
@@ -800,62 +812,75 @@ export default function GraficaPrograma({
                         </div>
                       )}
 
-                      {/* Aspectos expandidos */}
-                      {docenteExpandido.id === docente.docente && docenteExpandido.tipo === 'aspectos' && docenteAspectos[docente.docente] && (
-                        <div className="mt-4 pt-4 border-t border-gray-200">
-                          <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                            <AlertTriangle className="h-4 w-4" />
-                            Aspectos Evaluados ({docenteAspectos[docente.docente].aspectos?.length || 0})
-                          </h4>
-                          <div className="grid grid-cols-2 gap-3 mb-3">
-                            <div className="p-2 bg-white rounded-lg border border-gray-100">
-                              <p className="text-xs text-gray-600">Promedio General</p>
-                              <p className={`text-xl font-bold ${getPromedioColor(docenteAspectos[docente.docente].promedio || 0)}`}>
-                                {(docenteAspectos[docente.docente].promedio || 0).toFixed(2)}
-                              </p>
-                            </div>
-                            <div className="p-2 bg-white rounded-lg border border-gray-100">
-                              <p className="text-xs text-gray-600">Total Respuestas</p>
-                              <p className="text-xl font-bold text-gray-900">
-                                {docenteAspectos[docente.docente].total_respuestas}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                            {docenteAspectos[docente.docente].aspectos?.map((aspecto, idx) => {
-                              const promedioAspecto = aspecto.suma && aspecto.total_respuestas 
-                                ? aspecto.suma / aspecto.total_respuestas 
-                                : 0;
+                       {/* Aspectos expandidos */}
+                       {docenteExpandido.id === docente.docente && docenteExpandido.tipo === 'aspectos' && docenteAspectos[docente.docente] && (
+                         <div className="mt-4 pt-4 border-t border-gray-200 animate-in slide-in-from-top-2 duration-300">
+                           <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
+                             <TrendingUp className="h-3 w-3 text-blue-500" />
+                             Métricas por Aspectos ({docenteAspectos[docente.docente].evaluacion_estudiantes.aspectos?.length || 0})
+                           </h4>
+                           
+                           <div className="grid grid-cols-2 gap-4 mb-4">
+                             <div className="p-3 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Promedio Estudiantes</p>
+                               <div className="flex items-baseline gap-1">
+                                 <p className={`text-2xl font-black ${getPromedioColor(docenteAspectos[docente.docente].evaluacion_estudiantes.promedio_general || 0)}`}>
+                                   {(docenteAspectos[docente.docente].evaluacion_estudiantes.promedio_general || 0).toFixed(2)}
+                                 </p>
+                                 <p className="text-[10px] font-bold text-gray-300">/5.0</p>
+                               </div>
+                             </div>
+                             <div className="p-3 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Nivel Autorregulación</p>
+                               <div className="flex items-baseline gap-1">
+                                 <p className={`text-2xl font-black ${getPromedioColor(docenteAspectos[docente.docente].autoevaluacion_docente.promedio_general || 0)}`}>
+                                   {(docenteAspectos[docente.docente].autoevaluacion_docente.promedio_general || 0).toFixed(2)}
+                                 </p>
+                                 <p className="text-[10px] font-bold text-gray-300">/5.0</p>
+                               </div>
+                             </div>
+                           </div>
 
-                              return (
-                                <div key={idx} className="p-3 bg-white rounded-lg border border-gray-100">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <p className="text-sm font-medium text-gray-900">{aspecto.nombre}</p>
-                                    <p className={`text-lg font-bold ${getPromedioColor(promedioAspecto)}`}>
-                                      {promedioAspecto.toFixed(2)}
-                                    </p>
-                                  </div>
-                                  <div className="flex items-center justify-between text-xs text-gray-600">
-                                    <span>Suma: {aspecto.suma}</span>
-                                    <span>Respuestas: {aspecto.total_respuestas}</span>
-                                  </div>
-                                  <div className="mt-2 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                    <div
-                                      className={`h-full ${
-                                        promedioAspecto >= 4.0 ? 'bg-green-500' :
-                                        promedioAspecto >= 3.5 ? 'bg-blue-500' :
-                                        promedioAspecto >= 3.0 ? 'bg-yellow-500' :
-                                        'bg-red-500'
-                                      }`}
-                                      style={{ width: `${(promedioAspecto / 5) * 100}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
+                           <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                             {docenteAspectos[docente.docente].evaluacion_estudiantes.aspectos?.map((aspecto, idx) => {
+                               const promedioAspecto = aspecto.promedio ?? (aspecto.suma && aspecto.total_respuestas 
+                                 ? aspecto.suma / aspecto.total_respuestas 
+                                 : 0);
+ 
+                               return (
+                                 <div key={idx} className="p-4 bg-white rounded-xl border border-gray-50 hover:border-blue-100 transition-all shadow-sm group/aspect">
+                                   <div className="flex items-start justify-between mb-3">
+                                     <div className="flex-1">
+                                       <p className="text-[11px] font-bold text-gray-700 leading-tight group-hover/aspect:text-blue-600 transition-colors uppercase">
+                                         {aspecto.nombre}
+                                       </p>
+                                       <p className="text-[10px] font-medium text-gray-400 mt-1">
+                                         {aspecto.total_respuestas} respuestas analizadas
+                                       </p>
+                                     </div>
+                                     <div className="text-right">
+                                       <p className={`text-lg font-black ${getPromedioColor(promedioAspecto)}`}>
+                                         {promedioAspecto.toFixed(2)}
+                                       </p>
+                                     </div>
+                                   </div>
+                                   <div className="relative h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                     <div
+                                       className={`h-full transition-all duration-700 ${
+                                         promedioAspecto >= 4.0 ? 'bg-emerald-500' :
+                                         promedioAspecto >= 3.5 ? 'bg-blue-500' :
+                                         promedioAspecto >= 3.0 ? 'bg-amber-500' :
+                                         'bg-rose-500'
+                                       }`}
+                                       style={{ width: `${(promedioAspecto / 5) * 100}%` }}
+                                     />
+                                   </div>
+                                 </div>
+                               );
+                             })}
+                           </div>
+                         </div>
+                       )}
                     </div>
                   );
                 })}
@@ -873,24 +898,55 @@ export default function GraficaPrograma({
             )}
           </ScrollArea>
 
-          {/* Footer con resumen */}
+          {/* Footer con paginación y resumen */}
           {!dialogData.loading && dialogData.docentes && dialogData.docentes.length > 0 && (
-            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-              <span className="text-sm text-gray-500">
-                Total: {dialogData.docentes.length} docente
-                {dialogData.docentes.length !== 1 ? "s" : ""}
-              </span>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-green-600 border-green-200">
-                  <Star className="h-3 w-3 mr-1" />
+            <div className="flex flex-col gap-4 pt-4 border-t border-gray-100">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  Mostrando {dialogData.docentes.length} de {dialogData.pagination.total} docentes
+                </span>
+                
+                {/* Paginación */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={dialogData.pagination.page === 1}
+                    onClick={() => handleBarClick(dialogData.programa, dialogData.tipo, dialogData.pagination.page - 1)}
+                    className="h-8 w-8 p-0 rounded-lg border-slate-200"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  
+                  <div className="px-3 h-8 flex items-center bg-slate-50 rounded-lg border border-slate-100">
+                    <span className="text-[10px] font-black text-slate-600">
+                      PÁGINA {dialogData.pagination.page} DE {dialogData.pagination.pages}
+                    </span>
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={dialogData.pagination.page === dialogData.pagination.pages}
+                    onClick={() => handleBarClick(dialogData.programa, dialogData.tipo, dialogData.pagination.page + 1)}
+                    className="h-8 w-8 p-0 rounded-lg border-slate-200"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 flex-wrap">
+                <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50/30 font-bold px-2.5 py-1 rounded-lg">
+                  <Star className="h-3 w-3 mr-1.5" />
                   {dialogData.docentes.filter(d => d.estado === 'excelente').length} Excelente
                 </Badge>
-                <Badge variant="outline" className="text-blue-600 border-blue-200">
-                  <TrendingUp className="h-3 w-3 mr-1" />
+                <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50/30 font-bold px-2.5 py-1 rounded-lg">
+                  <TrendingUp className="h-3 w-3 mr-1.5" />
                   {dialogData.docentes.filter(d => d.estado === 'bueno').length} Bueno
                 </Badge>
-                <Badge variant="outline" className="text-red-600 border-red-200">
-                  <TrendingDown className="h-3 w-3 mr-1" />
+                <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50/30 font-bold px-2.5 py-1 rounded-lg">
+                  <TrendingDown className="h-3 w-3 mr-1.5" />
                   {dialogData.docentes.filter(d => d.estado === 'necesita_mejora').length} A mejorar
                 </Badge>
               </div>

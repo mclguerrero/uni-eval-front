@@ -1,7 +1,25 @@
+"use client"
+
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Trash2, Plus, GraduationCap, User, BookOpen, Users } from "lucide-react";
+import { 
+  Edit, 
+  Trash2, 
+  Plus, 
+  GraduationCap, 
+  User, 
+  BookOpen, 
+  Users, 
+  Search, 
+  School, 
+  Calendar, 
+  Globe, 
+  Bookmark, 
+  ArrowUpRight,
+  Library
+} from "lucide-react";
 
 // Interfaz para UserProg
 interface UserProg {
@@ -32,151 +50,159 @@ export function UserProgView({
   setModalUserProg,
   handleEliminarUserProg,
 }: UserProgViewProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredUserProgs = userProgs.filter(up => {
+    const searchLow = searchTerm.toLowerCase();
+    return (
+      up.datalogin?.user_name?.toLowerCase().includes(searchLow) ||
+      up.prog_nombre?.toLowerCase().includes(searchLow) ||
+      up.datalogin?.user_email?.toLowerCase().includes(searchLow)
+    );
+  });
+
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <GraduationCap className="h-6 w-6 text-primary" />
+    <div className="space-y-10 animate-in fade-in duration-700">
+      {/* Header & Actions Row */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <div className="h-2 w-10 bg-indigo-600 rounded-full" />
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight italic uppercase leading-none">Vinculación Académica</h2>
           </div>
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              Gestión de Programas por Usuario
-              <Badge variant="secondary" className="text-xs">
-                <Users className="h-3 w-3 mr-1" />
-                {userProgs.length} asignaciones
-              </Badge>
-            </CardTitle>
-            <CardDescription>
-              Administre la asignación de programas académicos a usuarios del sistema
-            </CardDescription>
-          </div>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-13">Asignación de responsabilidad institucional por programa</p>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {userProgs.length === 0 ? (
-          <div className="text-center py-12">
-            <GraduationCap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-              No hay programas asignados
-            </h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Comience asignando programas académicos a los usuarios
+        <Button
+          onClick={() => setModalUserProg({ isOpen: true, userProg: undefined })}
+          className="bg-indigo-900 hover:bg-indigo-800 text-white font-black px-8 py-7 rounded-2xl shadow-xl shadow-indigo-100 transition-all hover:scale-105 active:scale-95 text-[11px] uppercase tracking-widest gap-3"
+        >
+          <Plus className="h-5 w-5" />
+          Nueva Conexión de Programa
+        </Button>
+      </div>
+
+      {/* Modern Search & Layout View Options */}
+      <div className="relative group">
+        <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none">
+          <Search className="h-5 w-5 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
+        </div>
+        <Input
+          type="text"
+          placeholder="Rastrear programa o responsable académico..."
+          className="pl-14 py-8 bg-slate-50 border-2 border-slate-100 rounded-[2.2rem] text-sm font-bold focus-visible:ring-indigo-600/5 focus-visible:border-indigo-600 transition-all placeholder:text-slate-300 placeholder:uppercase placeholder:tracking-widest placeholder:text-[9px]"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center">
+           <Badge className="bg-white border-2 border-slate-100 text-slate-400 font-black text-[9px] uppercase tracking-widest px-4 py-2 rounded-xl">
+             MODO GALERÍA ACTIVE
+           </Badge>
+        </div>
+      </div>
+
+      {/* High-Fidelity Grid Display */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        {filteredUserProgs.length === 0 ? (
+          <div className="xl:col-span-2 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[4rem] p-24 text-center animate-in zoom-in duration-500">
+            <div className="h-24 w-24 bg-white rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 shadow-xl border border-slate-100 text-slate-200">
+              <Library className="h-10 w-10" />
+            </div>
+            <h3 className="text-2xl font-black text-slate-900 uppercase italic mb-3 tracking-tight">Archivo Académico sin Registros</h3>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest max-w-sm mx-auto leading-relaxed">
+               No hay asociaciones activas detectadas en este segmento de la red.
             </p>
-            <Button
-              onClick={() => setModalUserProg({ isOpen: true, userProg: undefined })}
-              className="inline-flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Crear Primera Asignación
-            </Button>
           </div>
         ) : (
-          <>
-            <div className="grid gap-4">
-              {userProgs.map((userProg) => {
-                const userData = userProg.datalogin;
-                const programName = userProg.prog_nombre;
+          filteredUserProgs.map((userProg) => {
+            const userData = userProg.datalogin;
+            const programName = userProg.prog_nombre;
 
-                return (
-                  <Card
-                    key={userProg.id}
-                    className="transition-all duration-200 hover:shadow-md border border-muted hover:border-primary/20"
-                  >
-                    <CardContent className="p-6">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div className="flex items-start gap-4 flex-1">
-                          {/* Icono y datos del usuario */}
-                          <div className="p-2 bg-primary/10 rounded-lg">
-                            <User className="h-5 w-5 text-primary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            {/* Nombre del usuario */}
-                            <h3 className="font-semibold text-lg mb-2">
-                              {userData?.user_name || `Usuario ${userProg.user_rol_id}`}
-                            </h3>
-                            
-                            {/* Información del usuario */}
-                            <div className="space-y-2">
-                              {/* Rol del usuario */}
-                              {userData?.role_name && (
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-sm text-muted-foreground">Rol:</span>
-                                  <Badge variant="outline" className="flex items-center gap-1">
-                                    {userData.role_name}
-                                  </Badge>
-                                  {userData.user_username && (
-                                    <Badge variant="secondary" className="text-xs">
-                                      @{userData.user_username}
-                                    </Badge>
-                                  )}
-                                </div>
-                              )}
-
-                              {/* Programa asignado */}
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <BookOpen className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm font-medium">
-                                  {programName || `Programa ID: ${userProg.prog_id}`}
-                                </span>
-                              </div>
-
-                              {/* Email del usuario */}
-                              {userData?.user_email && (
-                                <div className="text-sm text-muted-foreground">
-                                  {userData.user_email}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Botones de acción */}
-                        <div className="flex gap-2 self-start sm:self-center">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              setModalUserProg({
-                                isOpen: true,
-                                userProg,
-                              })
-                            }
-                            title="Editar asignación de programa"
-                            className="hover:bg-primary/10 hover:text-primary"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEliminarUserProg(userProg)}
-                            title="Eliminar asignación de programa"
-                            className="hover:bg-destructive/10 hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-
-            <div className="pt-4 border-t">
-              <Button
-                className="w-full"
-                onClick={() => setModalUserProg({ isOpen: true, userProg: undefined })}
+            return (
+              <div
+                key={userProg.id}
+                className="group relative bg-white border-2 border-slate-100 rounded-[3rem] p-10 transition-all duration-500 hover:shadow-2xl hover:shadow-indigo-200/30 hover:border-indigo-600/20 flex flex-col justify-between overflow-hidden"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Agregar Nueva Asignación de Programa
-              </Button>
-            </div>
-          </>
+                {/* Visual Background Decoration */}
+                <div className="absolute top-0 right-0 p-12 opacity-[0.03] group-hover:scale-125 group-hover:opacity-[0.06] transition-all duration-1000">
+                   <Library className="w-48 h-48 text-indigo-900" />
+                </div>
+
+                <div>
+                  <div className="flex items-start justify-between mb-10 relative z-10">
+                    <div className="h-18 w-18 rounded-[1.6rem] bg-indigo-50 flex items-center justify-center text-indigo-600 border-2 border-indigo-100/50 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500 shadow-sm">
+                      <School className="w-8 h-8" />
+                    </div>
+                    <div className="flex gap-3">
+                       <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setModalUserProg({ isOpen: true, userProg })}
+                        className="h-12 w-12 rounded-2xl bg-slate-50 hover:bg-slate-900 hover:text-white transition-all shadow-sm active:scale-90"
+                      >
+                        <Edit className="h-5 h-5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEliminarUserProg(userProg)}
+                        className="h-12 w-12 rounded-2xl bg-slate-50 hover:bg-red-600 hover:text-white transition-all shadow-sm active:scale-90"
+                      >
+                        <Trash2 className="h-5 h-5" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6 relative z-10">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                         <Badge className="bg-indigo-600 text-white font-black text-[9px] uppercase tracking-widest px-3 py-1 rounded-lg">
+                           <Bookmark className="w-3 h-3 mr-1.5 fill-current" />
+                           Programa Académico
+                         </Badge>
+                         <div className="h-px w-20 bg-slate-100 group-hover:bg-indigo-100 transition-colors" />
+                      </div>
+                      <h3 className="text-2xl font-black text-slate-900 uppercase italic tracking-tighter line-clamp-2 min-h-[64px] group-hover:text-indigo-600 transition-colors">
+                        {programName || `IDENTIFICADOR: ${userProg.prog_id}`}
+                      </h3>
+                    </div>
+
+                    <div className="bg-slate-50 group-hover:bg-indigo-50/50 rounded-[2rem] p-6 flex items-center gap-5 border border-slate-100 transition-all duration-500 hover:border-indigo-100">
+                       <div className="relative">
+                          <div className="h-14 w-14 rounded-2xl bg-white flex items-center justify-center shadow-lg border border-slate-50">
+                             <User className="w-6 h-6 text-slate-400 group-hover:text-indigo-600" />
+                          </div>
+                          <div className="absolute -top-1 -right-1 h-5 w-5 bg-indigo-600 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                             <ArrowUpRight className="w-3 h-3 text-white" />
+                          </div>
+                       </div>
+                       <div className="min-w-0">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">Responsable del Registro</p>
+                          <p className="text-base font-black text-slate-900 uppercase italic truncate">{userData?.user_name || "Personal No Identificado"}</p>
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter truncate opacity-70">{userData?.user_email}</p>
+                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-10 pt-8 border-t-2 border-slate-50 flex items-center justify-between relative z-10">
+                   <div className="flex items-center gap-6">
+                      <div className="flex flex-col">
+                         <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1 leading-none">Fecha Vinculación</p>
+                         <div className="flex items-center gap-2 text-slate-600">
+                            <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                            <span className="text-xs font-black uppercase tracking-tighter">{userProg.fecha_creacion ? new Date(userProg.fecha_creacion).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : 'S/I'}</span>
+                         </div>
+                      </div>
+                   </div>
+                   <Badge variant="outline" className="text-[10px] font-black uppercase tracking-widest bg-white border-2 border-slate-100 px-4 py-1.5 rounded-xl shadow-sm text-slate-400">
+                      ID CONEXIÓN: {userProg.id}
+                   </Badge>
+                </div>
+              </div>
+            );
+          })
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

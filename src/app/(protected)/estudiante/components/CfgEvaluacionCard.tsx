@@ -107,8 +107,23 @@ export default function EvaluacionCard({
   );
 
   const tieneEvaluaciones = evaluaciones.length > 0;
-  const encuestaFinalizada =
-    !configuracion.es_evaluacion && Boolean(evaluaciones[0]?.es_finalizada);
+  const tipoFormId = configuracion.tipo_form?.id ?? configuracion.tipo_form_id ?? 1;
+  const tipoFormNombre = configuracion.tipo_form?.nombre || 
+    (tipoFormId === 1 ? "Evaluacion" : 
+     tipoFormId === 2 ? "Encuesta" : 
+     tipoFormId === 3 ? "Autoevaluación" : 
+     tipoFormId === 4 ? "Autoevaluación por Materia" : "Formulario");
+  
+  // Tipos 2 y 3 (Encuesta/Autoevaluación) se consideran finalizadas al completarse
+  const esFinalizada = (tipoFormId === 2 || tipoFormId === 3) && Boolean(evaluaciones[0]?.es_finalizada);
+  
+  // Mapeo de colores por tipo
+  const tipoFormColor = 
+    tipoFormId === 1 ? "bg-blue-600 text-white" :      // Evaluación
+    tipoFormId === 2 ? "bg-amber-500 text-white" :     // Encuesta
+    tipoFormId === 3 ? "bg-purple-600 text-white" :    // Autoevaluación
+    tipoFormId === 4 ? "bg-indigo-600 text-white" :    // Autoevaluación por Materia
+    "bg-gray-600 text-white";
 
   const titulo =
     configuracion.tipo_evaluacion?.tipo.nombre ||
@@ -150,14 +165,8 @@ export default function EvaluacionCard({
         <CardHeader className="space-y-4 pb-4">
           {/* Titulo */}
           <div className="flex flex-col items-center gap-2 text-center">
-            <Badge
-              className={
-                configuracion.es_evaluacion
-                  ? "bg-blue-600 text-white"
-                  : "bg-amber-500 text-white"
-              }
-            >
-              {configuracion.es_evaluacion ? "Evaluacion" : "Encuesta"}
+            <Badge className={tipoFormColor}>
+              {tipoFormNombre}
             </Badge>
             <CardTitle className="text-lg md:text-2xl font-bold leading-tight break-words">
               {titulo}
@@ -224,14 +233,14 @@ export default function EvaluacionCard({
           <Button
             size="lg"
             className={`w-full rounded-2xl text-base md:text-lg font-bold py-6 md:py-7 shadow-lg hover:shadow-xl transition-all ${
-              encuestaFinalizada
+              esFinalizada
                 ? "bg-green-600 hover:bg-green-600 text-white"
                 : ""
             }`}
-            disabled={encuestaFinalizada || (!vigente && !tieneEvaluaciones)}
+            disabled={esFinalizada || (!vigente && !tieneEvaluaciones)}
             onClick={() => onIniciar(configuracion)}
           >
-            {encuestaFinalizada ? (
+            {esFinalizada ? (
               <div className="flex items-center gap-2 md:gap-3">
                 <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6" />
                 <span>Respondida</span>
@@ -240,13 +249,17 @@ export default function EvaluacionCard({
               <div className="flex items-center gap-2 md:gap-3">
                 <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6" />
                 <span>
-                  {configuracion.es_evaluacion
-                    ? "Iniciar evaluacion"
-                    : "Responder encuesta"}
+                  {tipoFormId === 1 ? "Iniciar evaluación" :
+                   tipoFormId === 2 ? "Responder encuesta" :
+                   tipoFormId === 3 ? "Iniciar autoevaluación" :
+                   tipoFormId === 4 ? "Iniciar autoevaluación" : "Iniciar"}
                 </span>
               </div>
             ) : vigente ? (
-              configuracion.es_evaluacion ? "Generar evaluacion" : "Generar encuesta"
+              tipoFormId === 1 ? "Generar evaluación" :
+              tipoFormId === 2 ? "Generar encuesta" :
+              tipoFormId === 3 ? "Generar autoevaluación" :
+              tipoFormId === 4 ? "Generar autoevaluación" : "Generar"
             ) : (
               "No disponible"
             )}

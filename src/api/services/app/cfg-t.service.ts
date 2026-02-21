@@ -13,10 +13,15 @@ import type { ApiResponse } from '../../types/api.types';
 
 export interface ConfiguracionTipo {
   id: number;
-  tipo_evaluacion_id: number;
+  tipo_id: number;
+  tipo_form_id: number;
+  tipo_form?: {
+    id: number;
+    nombre: string;
+    descripcion?: string | null;
+  } | null;
   fecha_inicio: string;
   fecha_fin: string;
-  es_evaluacion?: boolean;
   es_cmt_gen: boolean;
   es_cmt_gen_oblig: boolean;
   es_activo: boolean;
@@ -43,20 +48,20 @@ export interface ConfiguracionTipo {
 }
 
 export interface CreateConfiguracionTipoInput {
-  tipo_evaluacion_id: number;
+  tipo_id: number;
+  tipo_form_id: number;
   fecha_inicio: string;
   fecha_fin: string;
-  es_evaluacion?: boolean;
   es_cmt_gen?: boolean;
   es_cmt_gen_oblig?: boolean;
   es_activo?: boolean;
 }
 
 export interface UpdateConfiguracionTipoInput {
-  tipo_evaluacion_id?: number;
+  tipo_id?: number;
+  tipo_form_id?: number;
   fecha_inicio?: string;
   fecha_fin?: string;
-  es_evaluacion?: boolean;
   es_cmt_gen?: boolean;
   es_cmt_gen_oblig?: boolean;
   es_activo?: boolean;
@@ -114,6 +119,12 @@ export interface ConfiguracionAspectosEscalasResponse {
   es_evaluacion: boolean;
   es_cmt_gen: boolean;
   es_cmt_gen_oblig: boolean;
+  tipo_form_id?: number;
+  tipo_form?: {
+    id: number;
+    nombre: string;
+    descripcion?: string | null;
+  } | null;
   tipo_evaluacion: TipoEvaluacionData;
   aspectos: AspectoConEscalas[];
 }
@@ -201,6 +212,8 @@ class ConfiguracionEvaluacionService extends BaseService<
         es_evaluacion: false,
         es_cmt_gen: false,
         es_cmt_gen_oblig: false,
+        tipo_form_id: 0,
+        tipo_form: null,
         tipo_evaluacion: {
           id: 0,
           categoria: {

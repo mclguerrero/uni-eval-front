@@ -2,23 +2,20 @@
 
 import { useState, useEffect } from "react"
 import {
-  BarChart,
-  Bar,
+  ScatterChart,
+  Scatter,
   XAxis,
   YAxis,
+  ZAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
   Cell,
 } from "recharts"
 import { metricService } from "@/src/api/services/metric/metric.service"
-import type { MetricFilters, DocenteGeneralMetrics } from "@/src/api/services/metric/metric.service"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import type { DocenteGeneralMetrics } from "@/src/api/services/metric/metric.service"
 import { Skeleton } from "@/components/ui/skeleton"
-
-// ========================
-// TYPES
-// ========================
+import { Info, TrendingUp, Users, Target, BarChart3 } from "lucide-react"
 
 interface DocentesCumplimientoBarChartProps {
   filters: {
@@ -30,132 +27,61 @@ interface DocentesCumplimientoBarChartProps {
   }
 }
 
-interface ChartDataItem {
-  docente: string
-  nombre_docente: string
-  label: string
-  porcentaje_cumplimiento: number
-  total_evaluaciones: number
-  total_realizadas: number
-  total_pendientes: number
+interface ScatterDataItem {
+  x: number // porcentaje_cumplimiento
+  y: number // promedio_general
+  z: number // total_evaluaciones
+  name: string
+  id: string
 }
 
-interface ChartData {
-  chart: "bar"
-  title: string
-  data: ChartDataItem[]
+const getBubbleColor = (score: number | null): string => {
+  if (!score) return "#94a3b8"
+  if (score >= 4.5) return "#10b981" // emerald-500
+  if (score >= 4.0) return "#3b82f6" // blue-500
+  if (score >= 3.0) return "#f59e0b" // amber-500
+  return "#ef4444" // red-500
 }
 
-// ========================
-// CONSTANTS
-// ========================
-
-const DOCENTE_SIN_ASIGNAR = "DOCENTE  SIN ASIGNAR"
-
-const getBarColor = (percentage: number, nombreDocente: string): string => {
-  if (nombreDocente === DOCENTE_SIN_ASIGNAR) {
-    return "#9CA3AF" // gris
-  }
-
-  if (percentage >= 80) {
-    return "#22C55E" // verde
-  } else if (percentage >= 40) {
-    return "#EAB308" // amarillo
-  } else {
-    return "#EF4444" // rojo
-  }
-}
-
-// ========================
-// CUSTOM TOOLTIP
-// ========================
-
-interface TooltipProps {
-  active?: boolean
-  payload?: Array<{
-    payload: ChartDataItem
-  }>
-}
-
-const CustomTooltip = ({ active, payload }: TooltipProps) => {
-  if (!active || !payload || payload.length === 0) {
-    return null
-  }
+const CustomTooltip = ({ active, payload }: any) => {
+  if (!active || !payload || payload.length === 0) return null
 
   const data = payload[0].payload
 
   return (
-    <div className="bg-white p-3 border border-gray-300 rounded shadow-lg">
-      <p className="font-semibold text-gray-900">{data.nombre_docente}</p>
-      <p className="text-sm text-gray-700">
-        <span className="font-medium">Cumplimiento:</span> {data.porcentaje_cumplimiento.toFixed(1)}%
-      </p>
-      <p className="text-sm text-gray-700">
-        <span className="font-medium">Total evaluaciones:</span> {data.total_evaluaciones}
-      </p>
-      <p className="text-sm text-gray-700">
-        <span className="font-medium">Realizadas:</span> {data.total_realizadas}
-      </p>
-      <p className="text-sm text-gray-700">
-        <span className="font-medium">Pendientes:</span> {data.total_pendientes}
-      </p>
+    <div className="bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-2xl space-y-2">
+      <div className="border-b border-slate-100 pb-2 mb-2">
+        <p className="font-black text-slate-800 italic uppercase text-xs">{data.name}</p>
+        <p className="text-[10px] font-bold text-slate-400">ID: {data.id}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Participación</p>
+          <p className="text-sm font-black text-indigo-600">{data.x.toFixed(1)}%</p>
+        </div>
+        <div>
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Promedio</p>
+          <p className="text-sm font-black text-emerald-600">{data.y?.toFixed(2) || "N/A"}</p>
+        </div>
+      </div>
+      <div className="pt-2 border-t border-slate-100">
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Evaluaciones Totales</p>
+        <p className="text-sm font-black text-slate-700">{data.z}</p>
+      </div>
     </div>
   )
 }
 
-// ========================
-// SKELETON LOADER
-// ========================
-
-const SkeletonLoader = () => (
-  <div className="space-y-3">
-    {Array.from({ length: 5 }).map((_, i) => (
-      <Skeleton key={i} className="h-8 w-full" />
-    ))}
-  </div>
-)
-
-// ========================
-// DATA TRANSFORMATION
-// ========================
-
-const transformData = (docentes: DocenteGeneralMetrics[]): ChartData => {
-  const transformedData: ChartDataItem[] = docentes
-    .map((docente) => ({
-      docente: docente.docente,
-      nombre_docente: docente.nombre_docente || "",
-      label: docente.nombre_docente || "Sin nombre",
-      porcentaje_cumplimiento: docente.porcentaje_cumplimiento,
-      total_evaluaciones: docente.total_evaluaciones,
-      total_realizadas: docente.total_realizadas,
-      total_pendientes: docente.total_pendientes,
-    }))
-    .sort((a, b) => a.porcentaje_cumplimiento - b.porcentaje_cumplimiento)
-
-  return {
-    chart: "bar",
-    title: "Porcentaje de cumplimiento por docente",
-    data: transformedData,
-  }
-}
-
-// ========================
-// MAIN COMPONENT
-// ========================
-
 export default function DocentesCumplimientoBarChart({
   filters,
 }: DocentesCumplimientoBarChartProps) {
-  const [chartData, setChartData] = useState<ChartData | null>(null)
+  const [data, setData] = useState<ScatterDataItem[] | null>(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const loadChartData = async () => {
+    const loadData = async () => {
       try {
         setLoading(true)
-        setError(null)
-
         const response = await metricService.getDocentes({
           cfg_t: filters.cfg_t,
           sede: filters.sede,
@@ -163,108 +89,179 @@ export default function DocentesCumplimientoBarChart({
           programa: filters.programa,
           semestre: filters.semestre,
           page: 1,
-          limit: 600,
+          limit: 300, 
         })
 
-        const transformedData = transformData(response.data)
-        setChartData(transformedData)
+        const transformed: ScatterDataItem[] = response.data
+          .filter((d) => d.total_evaluaciones > 0)
+          .map((d) => ({
+            x: d.porcentaje_cumplimiento,
+            y: d.promedio_general || 0,
+            z: d.total_evaluaciones,
+            name: d.nombre_docente || "S/N",
+            id: d.docente,
+          }))
+
+        setData(transformed)
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Error al cargar datos"
-        setError(errorMessage)
-        console.error("Error cargando datos del gráfico:", err)
+        console.error("Error loading scatter data:", err)
       } finally {
         setLoading(false)
       }
     }
 
-    loadChartData()
+    loadData()
   }, [filters])
+
+  if (!filters.cfg_t) {
+    return (
+      <div className="py-24 flex flex-col items-center justify-center text-center">
+        <div className="w-20 h-20 rounded-[2rem] bg-indigo-50 flex items-center justify-center mb-6">
+          <Target className="w-10 h-10 text-indigo-300" />
+        </div>
+        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Seleccione una configuración para activar analítica</p>
+      </div>
+    )
+  }
 
   if (loading) {
     return (
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold">Porcentaje de cumplimiento por docente</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <SkeletonLoader />
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={`scatter-skeleton-summary-${i}`} className="h-28 rounded-3xl bg-slate-50" />
+          ))}
+        </div>
+        <Skeleton className="h-[450px] w-full rounded-[2.5rem] bg-slate-50/50" />
+      </div>
     )
   }
 
-  if (error) {
+  if (!data || data.length === 0) {
     return (
-      <Card className="mt-6 border-red-200 bg-red-50">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold text-red-900">Error</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-red-700">{error}</p>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (!chartData || chartData.data.length === 0) {
-    return (
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold">Porcentaje de cumplimiento por docente</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-            <p className="text-gray-600">No hay datos para mostrar</p>
+      <div className="py-24 flex flex-col items-center justify-center text-center animate-in fade-in zoom-in duration-1000">
+        <div className="relative mb-10">
+          <div className="absolute inset-0 bg-indigo-500/10 blur-[60px] rounded-full animate-pulse" />
+          <div className="relative w-28 h-28 rounded-[3rem] bg-white border-2 border-slate-100 shadow-2xl shadow-indigo-100 flex items-center justify-center group hover:scale-110 transition-transform duration-500">
+            <BarChart3 className="w-12 h-12 text-slate-200 group-hover:text-indigo-400 transition-colors" />
           </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  return (
-    <Card className="mt-6 shadow-lg hover:shadow-xl transition-all duration-300">
-      <CardHeader>
-        <CardTitle className="text-lg font-semibold">{chartData.title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={Math.max(400, chartData.data.length * 30)}>
-          <BarChart
-            data={chartData.data}
-            layout="vertical"
-            margin={{ top: 5, right: 30, left: 200, bottom: 5 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-            <XAxis type="number" domain={[0, 100]} label={{ value: "Porcentaje (%)", position: "insideBottomRight", offset: -5 }} />
-            <YAxis dataKey="label" type="category" width={190} tick={{ fontSize: 12 }} />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="porcentaje_cumplimiento" fill="#3B82F6" radius={[0, 8, 8, 0]}>
-              {chartData.data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={getBarColor(entry.porcentaje_cumplimiento, entry.nombre_docente)} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-
-        {/* Legend */}
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-red-500"></div>
-            <span className="text-sm text-gray-700">&lt; 40%</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-yellow-400"></div>
-            <span className="text-sm text-gray-700">40 - 79%</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-green-500"></div>
-            <span className="text-sm text-gray-700">≥ 80%</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-gray-400"></div>
-            <span className="text-sm text-gray-700">Sin asignar</span>
+          <div className="absolute -bottom-2 -right-2 w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center shadow-lg border-2 border-white">
+            <Info className="w-6 h-6 text-white" />
           </div>
         </div>
-      </CardContent>
-    </Card>
+        <h3 className="text-2xl font-black text-slate-900 tracking-tight italic mb-3 uppercase">Analítica en Espera</h3>
+        <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-[10px] max-w-sm leading-relaxed px-6">
+          Datos insuficientes para analítica avanzada. Se requiere un umbral mínimo de actividad (evaluaciones realizadas) para proyectar la correlación entre participación y desempeño docente.
+        </p>
+        <div className="mt-12 flex items-center gap-3 bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100">
+          <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Estado: Sincronizando flujo de datos</span>
+        </div>
+      </div>
+    )
+  }
+
+  const avgQual = data.length > 0 ? (data.reduce((acc, curr) => acc + curr.y, 0) / data.length).toFixed(2) : "0.00"
+
+  return (
+    <div className="space-y-10 animate-in fade-in duration-700">
+      {/* Resumen de Hallazgos */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="p-8 rounded-[2rem] bg-indigo-50/20 border-2 border-indigo-100/50 flex items-center gap-5">
+          <div className="h-14 w-14 rounded-2xl bg-white shadow-sm border border-indigo-100 flex items-center justify-center text-indigo-600">
+            <Target className="w-7 h-7" />
+          </div>
+          <div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-2">Meta Cumplimiento</p>
+            <p className="text-2xl font-black text-slate-900 italic tracking-tight">{data.filter(d => d.x >= 80).length} <span className="text-xs font-bold text-slate-400 not-italic uppercase tracking-widest">Líderes</span></p>
+          </div>
+        </div>
+        <div className="p-8 rounded-[2rem] bg-emerald-50/20 border-2 border-emerald-100/50 flex items-center gap-5">
+          <div className="h-14 w-14 rounded-2xl bg-white shadow-sm border border-emerald-100 flex items-center justify-center text-emerald-600">
+            <TrendingUp className="w-7 h-7" />
+          </div>
+          <div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-2">Calidad Promedio</p>
+            <p className="text-2xl font-black text-slate-900 italic tracking-tight">{avgQual}</p>
+          </div>
+        </div>
+        <div className="p-8 rounded-[2rem] bg-slate-50/50 border-2 border-slate-100 flex items-center gap-5">
+          <div className="h-14 w-14 rounded-2xl bg-white shadow-sm border border-slate-200 flex items-center justify-center text-slate-600">
+            <Users className="w-7 h-7" />
+          </div>
+          <div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-2">Población Activa</p>
+            <p className="text-2xl font-black text-slate-900 italic tracking-tight">{data.length} <span className="text-xs font-bold text-slate-400 not-italic uppercase tracking-widest">Docentes</span></p>
+          </div>
+        </div>
+      </div>
+
+      <div className="h-[500px] w-full p-4">
+        <ResponsiveContainer width="100%" height="100%">
+          <ScatterChart margin={{ top: 20, right: 30, bottom: 40, left: 30 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+            <XAxis 
+              type="number" 
+              dataKey="x" 
+              name="Participación" 
+              unit="%" 
+              domain={[0, 100]}
+              tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }}
+              label={{ value: 'CORRELACIÓN PARTICIPACIÓN (%)', position: 'insideBottom', offset: -20, fontSize: 10, fontWeight: 900, fill: '#94a3b8', letterSpacing: '0.1em' }}
+            />
+            <YAxis 
+              type="number" 
+              dataKey="y" 
+              name="Promedio" 
+              domain={[0, 5]}
+              tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }}
+              label={{ value: 'CALIDAD ACADÉMICA (0-5)', angle: -90, position: 'insideLeft', offset: 0, fontSize: 10, fontWeight: 900, fill: '#94a3b8', letterSpacing: '0.1em' }}
+            />
+            <ZAxis type="number" dataKey="z" range={[150, 1500]} name="Evaluaciones" />
+            <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
+            <Scatter name="Docentes" data={data}>
+              {data.map((entry) => (
+                <Cell 
+                  key={`cell-${entry.id}`} 
+                  fill={getBubbleColor(entry.y)} 
+                  fillOpacity={0.5} 
+                  stroke={getBubbleColor(entry.y)} 
+                  strokeWidth={2}
+                  className="hover:fill-opacity-100 transition-all duration-300 cursor-pointer"
+                />
+              ))}
+            </Scatter>
+          </ScatterChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Leyenda y Explicación Premium */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-8 pt-8 border-t border-slate-100">
+        <div className="flex flex-wrap justify-center gap-6">
+          <div className="flex items-center gap-2">
+            <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200" />
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Excelencia</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3.5 h-3.5 rounded-full bg-blue-500 shadow-sm shadow-blue-200" />
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Óptimo</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3.5 h-3.5 rounded-full bg-amber-500 shadow-sm shadow-amber-200" />
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">En Mejora</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3.5 h-3.5 rounded-full bg-red-500 shadow-sm shadow-red-200" />
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Crítico</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 bg-slate-50 px-5 py-3 rounded-2xl border border-slate-100 max-w-md">
+          <Info className="w-4 h-4 text-slate-400 flex-shrink-0" />
+          <p className="text-[9px] font-bold text-slate-400 leading-relaxed uppercase tracking-tight">
+            Análisis de densidad volumétrica: El área de cada nodo representa la carga académica total del docente.
+          </p>
+        </div>
+      </div>
+    </div>
   )
 }

@@ -19,6 +19,7 @@ import {
   AUTH_ROLE_IDS,
   APP_ROLE_ID_TO_NAME,
   APP_ROLE_NAME_TO_ID,
+  AUTH_ROLE_ID_TO_NAME,
   ROLE_ROUTES, 
   ROLE_PRIORITY 
 } from './types';
@@ -170,12 +171,9 @@ export function getDefaultRoute(user: User | null): string {
     return '/estudiante/bienvenida';
   }
 
-  if (authRoleIds.includes(APP_ROLE_IDS.DIRECTOR_PROGRAMA)) {
-    return '/director-programa/dashboard';
-  }
-
-  // Si es docente (AUTH_ROLE_IDS.DOCENTE = 2)
-  if (authRoleIds.includes(AUTH_ROLE_IDS.DOCENTE)) {
+  // Si es docente o docente de apoyo (AUTH_ROLE_IDS.DOCENTE = 2 o DOCENTE_APOYO = 15)
+  // IMPORTANTE: Verificar docente ANTES que director programa (evita colisión de IDs)
+  if (authRoleIds.includes(AUTH_ROLE_IDS.DOCENTE) || authRoleIds.includes(AUTH_ROLE_IDS.DOCENTE_APOYO)) {
     return '/docente/dashboard';
   }
   
@@ -217,7 +215,7 @@ export function canAccessRoute(
 // ========================
 
 /**
- * Normaliza el nombre de un rol para mapeo a ID
+ * Normaliza el nombre de un rol para mapeo a ID (roles de app)
  */
 export function normalizeRoleName(roleName: string): AppRoleName | null {
   const normalized = roleName.toLowerCase().trim();
@@ -227,6 +225,27 @@ export function normalizeRoleName(roleName: string): AppRoleName | null {
     'administrador': 'Admin',
     'director programa': 'Director Programa',
     'director_programa': 'Director Programa',
+  };
+  
+  return roleMap[normalized] ?? null;
+}
+
+/**
+ * Mapea nombre de rol de autenticación a ID
+ * Maneja variaciones del backend como 'docente_planta', 'docente de apoyo'
+ */
+export function normalizeAuthRoleName(roleName: string): number | null {
+  const normalized = roleName.toLowerCase().trim();
+  
+  const roleMap: Record<string, number> = {
+    'estudiante': AUTH_ROLE_IDS.ESTUDIANTE,
+    'docente': AUTH_ROLE_IDS.DOCENTE,
+    'docente_planta': AUTH_ROLE_IDS.DOCENTE,
+    'docente planta': AUTH_ROLE_IDS.DOCENTE,
+    'docente_apoyo': AUTH_ROLE_IDS.DOCENTE_APOYO,
+    'docente de apoyo': AUTH_ROLE_IDS.DOCENTE_APOYO,
+    'admin': AUTH_ROLE_IDS.ADMIN,
+    'administrador': AUTH_ROLE_IDS.ADMIN,
   };
   
   return roleMap[normalized] ?? null;
@@ -279,7 +298,7 @@ export const ROUTE_PERMISSIONS: Record<string, RoutePermission> = {
   },
   '/docente': {
     path: '/docente',
-    allowedRoleIds: [AUTH_ROLE_IDS.DOCENTE],
+    allowedRoleIds: [AUTH_ROLE_IDS.DOCENTE, AUTH_ROLE_IDS.DOCENTE_APOYO],
     requiresAuth: true,
     type: 'auth',
   },

@@ -2,7 +2,19 @@
 
 import { useState, useEffect, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { 
+  Download, 
+  LayoutDashboard, 
+  Database, 
+  Settings2, 
+  Loader2, 
+  TrendingUp,
+  AlertCircle,
+  Clock,
+  CheckCircle2,
+  Settings
+} from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { metricService } from "@/src/api";
 import type { MetricFilters, RankingItem, SummaryMetrics, ProgramaSummary } from "@/src/api/services/metric/metric.service";
@@ -17,13 +29,9 @@ import { apiClient } from "@/src/api/core/apiClient";
 const FiltersMemo = memo(Filtros);
 
 interface DashboardDataState {
-  // Métricas generales del summary
   resumenGenerales: SummaryMetrics['generales'];
-  // Ranking completo de docentes
   docentesRanking: RankingItem[];
-  // Resumen por programas académicos
   programas: ProgramaSummary[];
-  // Estadísticas procesadas para componente de visualización
   estadisticasProgramas: ProgramaSummary[];
 }
 
@@ -37,15 +45,12 @@ interface FiltrosState {
 }
 
 export default function AdminDashboard() {
-  // Protegido por admin/layout.tsx con useRequireRole(APP_ROLE_IDS.ADMIN)
   const { toast } = useToast();
   const [loadingBackup, setLoadingBackup] = useState(false);
 
   const handleBackup = async () => {
     try {
       setLoadingBackup(true);
-
-      // Usar el nuevo método downloadFile
       const response = await apiClient.downloadFile(
         "/backup",
         {},
@@ -55,27 +60,23 @@ export default function AdminDashboard() {
       const url = window.URL.createObjectURL(response.data);
       const link = document.createElement("a");
       link.href = url;
-
-      // Usar un nombre de archivo por defecto
-      const fileName = "backup.sql";
+      const fileName = `backup_${new Date().toISOString().split('T')[0]}.sql`;
 
       link.setAttribute("download", fileName);
       document.body.appendChild(link);
       link.click();
-
       link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
 
       toast({
-        title: "Backup generado",
-        description: "El archivo de backup se ha descargado correctamente",
-        variant: "default",
+        title: "Respaldo Exitoso",
+        description: "La base de datos ha sido exportada correctamente.",
       });
     } catch (error) {
       console.error("Error al generar el backup:", error);
       toast({
-        title: "Error",
-        description: "No se pudo generar el backup",
+        title: "Error de Respaldo",
+        description: "No se pudo generar la copia de seguridad en este momento.",
         variant: "destructive",
       });
     } finally {
@@ -83,7 +84,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Estados para filtros
   const [filtros, setFiltros] = useState<FiltrosState>({
     configuracionSeleccionada: null,
     semestreSeleccionado: "",
@@ -93,13 +93,9 @@ export default function AdminDashboard() {
     sedeSeleccionada: "",
   });
 
-  // Estados para datos del dashboard
-  const [dashboardData, setDashboardData] = useState<DashboardDataState | null>(
-    null
-  );
+  const [dashboardData, setDashboardData] = useState<DashboardDataState | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Cargar datos del dashboard cuando cambian los filtros
   useEffect(() => {
     const cargarDashboard = async () => {
       if (!filtros.configuracionSeleccionada) {
@@ -119,37 +115,23 @@ export default function AdminDashboard() {
           ...(filtros.grupoSeleccionado && { grupo: filtros.grupoSeleccionado }),
         };
 
-        // Obtener datos de los 3 endpoints
         const [summaryResponse, rankingResponse, programasResponse] = await Promise.all([
           metricService.getSummary(metricParams),
           metricService.getRanking(metricParams),
           metricService.getSummaryByPrograms(metricParams),
         ]);
 
-        // Extraer datos directamente de las respuestas
-        const resumenGenerales = summaryResponse.generales;
-        const docentesRanking = rankingResponse.ranking || [];
-        const programas = programasResponse.programas || [];
-
-        // Los datos ya están en el formato correcto (ProgramaSummary)
-        const estadisticasProgramas: ProgramaSummary[] = programas;
-
         setDashboardData({
-          resumenGenerales,
-          docentesRanking,
-          programas,
-          estadisticasProgramas,
+          resumenGenerales: summaryResponse.generales,
+          docentesRanking: rankingResponse.ranking || [],
+          programas: programasResponse.programas || [],
+          estadisticasProgramas: programasResponse.programas || [],
         });
       } catch (error) {
         console.error("Error al cargar el dashboard:", error);
-        console.error("Detalles del error:", {
-          message: error instanceof Error ? error.message : 'Error desconocido',
-          filtros,
-          stack: error instanceof Error ? error.stack : undefined
-        });
         toast({
-          title: "Error",
-          description: error instanceof Error ? error.message : "No se pudieron cargar los datos del dashboard",
+          title: "Sincronización Fallida",
+          description: error instanceof Error ? error.message : "Error al recuperar datos del servidor",
           variant: "destructive",
         });
         setDashboardData(null);
@@ -184,18 +166,6 @@ export default function AdminDashboard() {
     });
   }, [filtros]);
 
-  if (loading && !dashboardData) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
-      </div>
-    );
-  }
-
-  // Preparar datos para mostrar con nombres descriptivos
-  const resumenGenerales = dashboardData?.resumenGenerales;
-  const docentesRanking = dashboardData?.docentesRanking || [];
-  const estadisticasProgramas = dashboardData?.estadisticasProgramas || [];
   const metricFilters: MetricFilters = {
     cfg_t: filtros.configuracionSeleccionada || 0,
     ...(filtros.sedeSeleccionada && { sede: filtros.sedeSeleccionada }),
@@ -206,72 +176,174 @@ export default function AdminDashboard() {
   };
 
   return (
-    <>
-      <header className="bg-white p-4 shadow-sm flex justify-between items-center">
-        <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-gray-900 text-gray-900 hover:bg-gray-100"
-            onClick={handleBackup}
-            disabled={loadingBackup}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            {loadingBackup ? "Generando backup..." : "Backup"}
-          </Button>
+    <div className="min-h-screen bg-white">
+      {/* Header Premium - Light Style */}
+      <header className="sticky top-0 z-40 bg-white/80 border-b border-slate-100 shadow-sm backdrop-blur-xl">
+        <div className="w-full mx-auto px-8 h-20 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100/50">
+              <LayoutDashboard className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <h1 className="text-xl font-black text-slate-900 italic tracking-tight uppercase">Panel de Inteligencia</h1>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Monitoreo Institucional</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-white border-slate-200 text-slate-900 hover:bg-slate-50 rounded-xl font-bold text-[11px] uppercase tracking-widest px-4 h-9 shadow-sm"
+              onClick={handleBackup}
+              disabled={loadingBackup}
+            >
+              {loadingBackup ? (
+                <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+              ) : (
+                <Database className="h-3.5 w-3.5 mr-2 text-blue-600" />
+              )}
+              {loadingBackup ? "Exportando..." : "Backup Estructural"}
+            </Button>
+          </div>
         </div>
       </header>
 
-      <main className="p-6">
-        {/* Componente de Filtros */}
-        <FiltersMemo
-          filtros={filtros}
-          onFiltrosChange={handleFiltrosChange}
-          onLimpiarFiltros={handleLimpiarFiltros}
-          loading={loading}
-        />
-
-        {/* Contenido del Dashboard */}
-        {!filtros.configuracionSeleccionada ? (
-          <div className="min-h-[400px] bg-gray-50 flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                Selecciona una configuración
-              </h2>
-              <p className="text-gray-600">
-                Elige una configuración de evaluación para ver los datos del
-                dashboard
-              </p>
-            </div>
-          </div>
-        ) : !dashboardData ? (
-          <div className="min-h-[400px] bg-gray-50 flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                No hay datos disponibles
-              </h2>
-              <p className="text-gray-600">
-                No se encontraron datos para los filtros seleccionados
-              </p>
-            </div>
-          </div>
-        ) : (
-          <>
-            <MetricCards data={resumenGenerales} />
-
-            <GraficaPrograma
-              datos={estadisticasProgramas.length > 0 ? estadisticasProgramas : undefined}
-              filters={metricFilters}
+      <main className="w-full mx-auto p-10 space-y-12">
+        {/* Componente de Filtros estilizado */}
+        <div className="relative group">
+          <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-3xl blur opacity-0 group-hover:opacity-100 transition duration-1000"></div>
+          <div className="relative">
+            <FiltersMemo
+              filtros={filtros}
+              onFiltrosChange={handleFiltrosChange}
+              onLimpiarFiltros={handleLimpiarFiltros}
               loading={loading}
             />
+          </div>
+        </div>
 
-            <AnalisisAspectos filters={metricFilters} loading={loading} />
+        {/* Contenido Dinámico */}
+        {!filtros.configuracionSeleccionada ? (
+          <div className="bg-slate-50/50 border border-slate-100 rounded-[3rem] p-16 shadow-inner text-center max-w-2xl mx-auto my-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="h-24 w-24 bg-white rounded-3xl flex items-center justify-center mx-auto mb-8 border border-slate-100 shadow-sm">
+              <Settings2 className="h-12 w-12 text-slate-200" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 mb-4 italic tracking-tight">Configuración Necesaria</h2>
+            <p className="text-slate-400 font-medium text-sm leading-relaxed mb-8 max-w-sm mx-auto">
+              Para visualizar la arquitectura de datos, por favor seleccione un modelo de evaluación en el panel de filtros superior.
+            </p>
+            <div className="flex justify-center gap-4">
+              <div className="flex items-center gap-2 text-[10px] font-black text-slate-200 uppercase tracking-widest">
+                <div className="h-1.5 w-1.5 rounded-full bg-blue-500/50 animate-pulse"></div>
+                Esperando Input
+              </div>
+            </div>
+          </div>
+        ) : (loading && !dashboardData) || (loading && dashboardData) ? (
+          <div className="space-y-16 pb-20">
+            {/* Skeletons para Métricas */}
+            <section className="space-y-6">
+              <div className="flex items-center gap-3 px-4">
+                <Skeleton className="h-4 w-4 rounded-full" />
+                <Skeleton className="h-3 w-64" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-64 rounded-[2.5rem]" />
+                ))}
+              </div>
+            </section>
 
-            <RankingDocentes docentes={docentesRanking} loading={loading} />
-          </>
+            {/* Skeletons para Gráficas */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 px-4">
+                  <Skeleton className="h-4 w-4 rounded-full" />
+                  <Skeleton className="h-3 w-48" />
+                </div>
+                <Skeleton className="h-[500px] rounded-[2.5rem]" />
+              </div>
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 px-4">
+                  <Skeleton className="h-4 w-4 rounded-full" />
+                  <Skeleton className="h-3 w-48" />
+                </div>
+                <Skeleton className="h-[500px] rounded-[2.5rem]" />
+              </div>
+            </div>
+
+            {/* Skeleton para Ranking */}
+            <section className="space-y-6">
+              <div className="flex items-center gap-3 px-4">
+                <Skeleton className="h-4 w-4 rounded-full" />
+                <Skeleton className="h-3 w-64" />
+              </div>
+              <Skeleton className="h-[600px] rounded-[2.5rem]" />
+            </section>
+          </div>
+        ) : !dashboardData ? (
+          <div className="bg-rose-50 border border-rose-100 rounded-[2.5rem] p-16 text-center max-w-xl mx-auto my-20">
+            <div className="h-16 w-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-rose-100">
+              <AlertCircle className="h-8 w-8 text-rose-500" />
+            </div>
+            <h2 className="text-xl font-black text-slate-900 mb-2 italic">Sin Conexión con Datos</h2>
+            <p className="text-sm font-medium text-slate-400">
+              La consulta actual no ha retornado registros. Verifique los parámetros de filtrado seleccionados.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-16 pb-20 animate-in fade-in duration-1000">
+            {/* Métricas e Indicadores Clave */}
+            <section className="space-y-6">
+              <div className="flex items-center gap-3 px-4">
+                <TrendingUp className="h-4 w-4 text-blue-600" />
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] italic leading-none">Puntos de Control Estratégicos</h3>
+              </div>
+              <MetricCards data={dashboardData.resumenGenerales} />
+            </section>
+
+            {/* Visualizaciones de Programas y Aspectos */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 px-4">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] italic leading-none">Distribución por Programas</h3>
+                </div>
+                <GraficaPrograma
+                  datos={dashboardData.estadisticasProgramas.length > 0 ? dashboardData.estadisticasProgramas : undefined}
+                  filters={metricFilters}
+                  loading={loading}
+                />
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 px-4">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] italic leading-none">Análisis de Atributos Críticos</h3>
+                </div>
+                <AnalisisAspectos filters={metricFilters} loading={loading} />
+              </div>
+            </div>
+
+            {/* Ranking Docente de Excelencia */}
+            <section className="space-y-6">
+              <div className="flex items-center gap-3 px-4">
+                <Clock className="h-4 w-4 text-slate-900" />
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] italic leading-none">Liderazgo y Proyección Académica</h3>
+              </div>
+              <RankingDocentes docentes={dashboardData.docentesRanking} loading={loading} />
+            </section>
+          </div>
         )}
       </main>
-    </>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #f1f5f9; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #e2e8f0; }
+      `}</style>
+    </div>
   );
 }
