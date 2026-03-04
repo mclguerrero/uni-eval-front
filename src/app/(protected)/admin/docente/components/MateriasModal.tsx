@@ -60,23 +60,8 @@ export default function MateriasModal({ docente, filtros, onClose }: MateriasMod
         semestre: filtros.semestreSeleccionado || undefined,
       })
 
-      // Normalizar materias: si una materia tiene un array de grupos, aplanarlos para mostrar cada uno por separado
-      const flattenedMaterias = response.materias.reduce((acc: MateriaMetric[], mat) => {
-        if (mat.grupos && mat.grupos.length > 0) {
-          const groupSpecificAssignments = mat.grupos.map(g => ({
-            ...mat,
-            ...g,
-            grupos: undefined // Evitar recursión
-          }))
-          return [...acc, ...groupSpecificAssignments]
-        }
-        return [...acc, mat]
-      }, [])
-
-      setMateriasData({
-        ...response,
-        materias: flattenedMaterias
-      })
+      // Mantener las materias tal cual sin aplanar grupos
+      setMateriasData(response)
     } catch (error) {
       console.error('Error cargando materias:', error)
     } finally {
@@ -163,9 +148,16 @@ export default function MateriasModal({ docente, filtros, onClose }: MateriasMod
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {materiasData.materias.map((materia, index) => (
+                {materiasData.materias.map((materia, index) => {
+                  // Determinar si tiene múltiples grupos
+                  const tieneMultiplesGrupos = materia.grupos && materia.grupos.length > 0
+                  const gruposDisplay = tieneMultiplesGrupos 
+                    ? materia.grupos!.map(g => g.grupo).join(', ') 
+                    : materia.grupo || 'N/A'
+                  
+                  return (
                   <div
-                    key={`${materia.codigo_materia}-${materia.grupo || 'no-group'}-${index}`}
+                    key={`${materia.codigo_materia}-${index}`}
                     className="bg-white border-2 border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-2xl transition-all duration-500 hover:border-indigo-100 group relative overflow-hidden"
                   >
                     <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-125 transition-transform duration-700 pointer-events-none">
@@ -177,9 +169,15 @@ export default function MateriasModal({ docente, filtros, onClose }: MateriasMod
                         <h3 className="text-2xl font-black text-slate-900 italic tracking-tight leading-tight group-hover:text-indigo-600 transition-colors">
                           {materia.nombre_materia}
                         </h3>
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide leading-snug">
+                          {materia.nom_programa}
+                        </p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+                          {materia.semestre}
+                        </p>
                         <div className="flex items-center gap-3">
                            <Badge variant="outline" className="rounded-full bg-slate-50 border-slate-100 text-slate-500 font-black text-[9px] px-3 uppercase tracking-widest">
-                            GRUPO: {materia.grupo || 'N/A'}
+                            {tieneMultiplesGrupos ? 'GRUPOS' : 'GRUPO'}: {gruposDisplay}
                           </Badge>
                           <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">
                             {materia.codigo_materia}
@@ -247,7 +245,8 @@ export default function MateriasModal({ docente, filtros, onClose }: MateriasMod
                       </Button>
                     </div>
                   </div>
-                ))}
+                )})
+              }
               </div>
             )}
           </div>
@@ -302,6 +301,7 @@ export default function MateriasModal({ docente, filtros, onClose }: MateriasMod
           codigoMateria={selectedMateria.codigo_materia}
           nombreMateria={selectedMateria.nombre_materia}
           grupo={selectedMateria.grupo}
+          grupos={selectedMateria.grupos}
           filtros={filtros}
           onClose={() => {
             setShowCompletionModal(false)

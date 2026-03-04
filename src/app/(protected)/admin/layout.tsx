@@ -35,18 +35,20 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
       {/* Sidebar */}
       <AdminSidebar 
         isCollapsed={isCollapsed} 
         onToggle={toggle} 
       />
       
-      {/* Contenido principal - Añadido margin-left para compensar el sidebar fijo */}
-      <main className={`flex-1 transition-all duration-300 ease-in-out ${
-        isCollapsed ? 'lg:ml-20' : 'lg:ml-64'
-      } ml-0 min-h-screen`}>
-        <div className="flex-1 p-4 lg:p-0">
+      {/* Contenido principal - padding-left para compensar sidebar fijo sin desbordar */}
+      <main
+        className={`min-h-screen min-w-0 transition-all duration-300 ease-in-out ${
+          isCollapsed ? "lg:pl-20" : "lg:pl-64"
+        }`}
+      >
+        <div className="min-w-0">
           {children}
         </div>
       </main>

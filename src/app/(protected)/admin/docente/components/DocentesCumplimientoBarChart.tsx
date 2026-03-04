@@ -76,23 +76,46 @@ export default function DocentesCumplimientoBarChart({
   filters,
 }: DocentesCumplimientoBarChartProps) {
   const [data, setData] = useState<ScatterDataItem[] | null>(null)
+  const [totalDocentes, setTotalDocentes] = useState(0)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true)
-        const response = await metricService.getDocentes({
+        const firstResponse = await metricService.getDocentes({
           cfg_t: filters.cfg_t,
           sede: filters.sede,
           periodo: filters.periodo,
           programa: filters.programa,
           semestre: filters.semestre,
           page: 1,
-          limit: 300, 
+          limit: 100,
         })
 
-        const transformed: ScatterDataItem[] = response.data
+        const totalPages = firstResponse.pagination?.pages || 1
+        const totalFromPagination = firstResponse.pagination?.total || 0
+
+        let allDocentes = [...firstResponse.data]
+
+        if (totalPages > 1) {
+          const pageRequests = Array.from({ length: totalPages - 1 }, (_, index) =>
+            metricService.getDocentes({
+              cfg_t: filters.cfg_t,
+              sede: filters.sede,
+              periodo: filters.periodo,
+              programa: filters.programa,
+              semestre: filters.semestre,
+              page: index + 2,
+              limit: 100,
+            })
+          )
+
+          const remainingPages = await Promise.all(pageRequests)
+          allDocentes = allDocentes.concat(remainingPages.flatMap((pageResponse) => pageResponse.data))
+        }
+
+        const transformed: ScatterDataItem[] = allDocentes
           .filter((d) => d.total_evaluaciones > 0)
           .map((d) => ({
             x: d.porcentaje_cumplimiento,
@@ -103,15 +126,24 @@ export default function DocentesCumplimientoBarChart({
           }))
 
         setData(transformed)
+        setTotalDocentes(totalFromPagination)
       } catch (err) {
         console.error("Error loading scatter data:", err)
+        setData([])
+        setTotalDocentes(0)
       } finally {
         setLoading(false)
       }
     }
 
     loadData()
-  }, [filters])
+  }, [
+    filters.cfg_t,
+    filters.sede,
+    filters.periodo,
+    filters.programa,
+    filters.semestre,
+  ])
 
   if (!filters.cfg_t) {
     return (
@@ -191,7 +223,7 @@ export default function DocentesCumplimientoBarChart({
           </div>
           <div>
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-2">Población Activa</p>
-            <p className="text-2xl font-black text-slate-900 italic tracking-tight">{data.length} <span className="text-xs font-bold text-slate-400 not-italic uppercase tracking-widest">Docentes</span></p>
+            <p className="text-2xl font-black text-slate-900 italic tracking-tight">{totalDocentes} <span className="text-xs font-bold text-slate-400 not-italic uppercase tracking-widest">Docentes</span></p>
           </div>
         </div>
       </div>

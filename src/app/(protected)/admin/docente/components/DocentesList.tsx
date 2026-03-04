@@ -186,7 +186,7 @@ export default function DocentesList({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-50 bg-slate-50/30">
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Docente</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[34%] min-w-[280px]">Docente</th>
                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Estado Operativo</th>
                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Evaluaciones</th>
                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Cumplimiento</th>
@@ -251,11 +251,11 @@ export default function DocentesList({
                               </div>
                             )}
                           </div>
-                          <div className="max-w-[200px] truncate">
-                            <p className="font-bold text-slate-900 group-hover:text-indigo-900 transition-colors truncate">
+                          <div className="w-full max-w-[420px] md:max-w-[520px]">
+                            <p className="font-bold text-slate-900 group-hover:text-indigo-900 transition-colors whitespace-normal break-words leading-snug">
                               {docente.nombre_docente || 'Sin nombre'}
                             </p>
-                            <p className="text-[10px] font-black text-slate-400 font-mono mt-0.5 uppercase tracking-widest flex items-center gap-1.5 line-clamp-1">
+                            <p className="text-[10px] font-black text-slate-400 font-mono mt-1 uppercase tracking-widest flex items-center gap-1.5 whitespace-normal break-all">
                               <span className="h-1 w-1 rounded-full bg-slate-300" />
                               ID: {docente.docente}
                             </p>

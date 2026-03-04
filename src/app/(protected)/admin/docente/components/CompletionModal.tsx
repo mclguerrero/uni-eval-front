@@ -23,7 +23,7 @@ import {
   Tooltip as RechartsTooltip
 } from 'recharts'
 import { metricService } from "@/src/api/services/metric/metric.service"
-import type { MateriaCompletionMetrics, GrupoCompletion, StudentInfo } from "@/src/api/services/metric/metric.service"
+import type { MateriaCompletionMetrics, GrupoCompletion, StudentInfo, MateriaGrupoMetric } from "@/src/api/services/metric/metric.service"
 
 interface FiltrosState {
   configuracionSeleccionada: number | null
@@ -40,6 +40,7 @@ interface CompletionModalProps {
   codigoMateria: string
   nombreMateria?: string
   grupo?: string
+  grupos?: MateriaGrupoMetric[]
   filtros: FiltrosState
   onClose: () => void
 }
@@ -50,21 +51,30 @@ export default function CompletionModal({
   codigoMateria,
   nombreMateria,
   grupo,
+  grupos,
   filtros,
   onClose,
 }: CompletionModalProps) {
   const [completionData, setCompletionData] = useState<MateriaCompletionMetrics | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Determinar si la materia tiene múltiples grupos
+  const tieneMultiplesGrupos = grupos && grupos.length > 1
 
   const filteredGroups = useMemo(() => {
     if (!completionData) return []
-    // Si hay un grupo específico seleccionado para este modal, filtramos por él
+    // Si la materia tiene múltiples grupos, mostrar todos
+    // Si hay un grupo específico (materia con un solo grupo), filtramos por él
+    if (tieneMultiplesGrupos) {
+      // Ordenar grupos alfabéticamente para mejor organización
+      return [...completionData.grupos].sort((a, b) => a.grupo.localeCompare(b.grupo))
+    }
     if (grupo) {
       return completionData.grupos.filter(g => g.grupo === grupo)
     }
     return completionData.grupos
-  }, [completionData, grupo])
+  }, [completionData, grupo, tieneMultiplesGrupos])
 
   const totalStats = useMemo(() => {
     return filteredGroups.reduce((acc, g) => ({
@@ -95,7 +105,8 @@ export default function CompletionModal({
         periodo: filtros.periodoSeleccionado || undefined,
         programa: filtros.programaSeleccionado || undefined,
         semestre: filtros.semestreSeleccionado || undefined,
-        grupo: filtros.grupoSeleccionado || grupo || undefined,
+        // Si tiene múltiples grupos, no filtrar; si es un solo grupo, pasar el filtro
+        grupo: tieneMultiplesGrupos ? undefined : (filtros.grupoSeleccionado || grupo || undefined),
       })
 
       setCompletionData(response)
@@ -254,6 +265,15 @@ export default function CompletionModal({
                     {nombreMateria} <span className="text-blue-500 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100 ml-1 text-xs">{codigoMateria}</span>
                   </span>
                 </div>
+                {tieneMultiplesGrupos && (
+                  <div className="flex items-center gap-3">
+                    <div className="h-2 w-2 rounded-full bg-slate-200" />
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Configuración:</span>
+                    <Badge variant="outline" className="rounded-xl bg-indigo-50 border-indigo-100 text-indigo-700 font-black px-3 py-1 text-[10px] uppercase tracking-widest">
+                      {grupos!.length} Grupos Activos
+                    </Badge>
+                  </div>
+                )}
               </div>
             </div>
             <button

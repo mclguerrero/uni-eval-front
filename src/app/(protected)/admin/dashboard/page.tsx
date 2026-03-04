@@ -115,10 +115,17 @@ export default function AdminDashboard() {
           ...(filtros.grupoSeleccionado && { grupo: filtros.grupoSeleccionado }),
         };
 
+        // Parámetros sin programa, semestre, grupo para la gráfica de programas
+        const metricParamsGrafica: MetricFilters = {
+          cfg_t: filtros.configuracionSeleccionada,
+          ...(filtros.sedeSeleccionada && { sede: filtros.sedeSeleccionada }),
+          ...(filtros.periodoSeleccionado && { periodo: filtros.periodoSeleccionado }),
+        };
+
         const [summaryResponse, rankingResponse, programasResponse] = await Promise.all([
           metricService.getSummary(metricParams),
           metricService.getRanking(metricParams),
-          metricService.getSummaryByPrograms(metricParams),
+          metricService.getSummaryByPrograms(metricParamsGrafica),
         ]);
 
         setDashboardData({
@@ -166,6 +173,15 @@ export default function AdminDashboard() {
     });
   }, [filtros]);
 
+  const handleProgramaFilterChange = useCallback((programa: string) => {
+    setFiltros(prevFiltros => ({
+      ...prevFiltros,
+      programaSeleccionado: programa,
+      semestreSeleccionado: "",
+      grupoSeleccionado: "",
+    }));
+  }, []);
+
   const metricFilters: MetricFilters = {
     cfg_t: filtros.configuracionSeleccionada || 0,
     ...(filtros.sedeSeleccionada && { sede: filtros.sedeSeleccionada }),
@@ -175,11 +191,18 @@ export default function AdminDashboard() {
     ...(filtros.grupoSeleccionado && { grupo: filtros.grupoSeleccionado }),
   };
 
+  // Filtros específicos para la gráfica de programas (sin programa, semestre, grupo)
+  const graficaProgramaFilters: MetricFilters = {
+    cfg_t: filtros.configuracionSeleccionada || 0,
+    ...(filtros.sedeSeleccionada && { sede: filtros.sedeSeleccionada }),
+    ...(filtros.periodoSeleccionado && { periodo: filtros.periodoSeleccionado }),
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Header Premium - Light Style */}
       <header className="sticky top-0 z-40 bg-white/80 border-b border-slate-100 shadow-sm backdrop-blur-xl">
-        <div className="w-full mx-auto px-8 h-20 flex justify-between items-center">
+        <div className="mx-auto h-20 w-full max-w-[1680px] px-6 lg:px-8 xl:px-10 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100/50">
               <LayoutDashboard className="h-5 w-5 text-blue-600" />
@@ -209,7 +232,7 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <main className="w-full mx-auto p-10 space-y-12">
+      <main className="mx-auto w-full max-w-[1680px] px-6 py-10 lg:px-8 xl:px-10 space-y-12">
         {/* Componente de Filtros estilizado */}
         <div className="relative group">
           <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-3xl blur opacity-0 group-hover:opacity-100 transition duration-1000"></div>
@@ -255,23 +278,23 @@ export default function AdminDashboard() {
               </div>
             </section>
 
-            {/* Skeletons para Gráficas */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 px-4">
-                  <Skeleton className="h-4 w-4 rounded-full" />
-                  <Skeleton className="h-3 w-48" />
-                </div>
-                <Skeleton className="h-[500px] rounded-[2.5rem]" />
+            {/* Skeletons para Gráfica de Programas */}
+            <section className="space-y-6">
+              <div className="flex items-center gap-3 px-4">
+                <Skeleton className="h-4 w-4 rounded-full" />
+                <Skeleton className="h-3 w-48" />
               </div>
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 px-4">
-                  <Skeleton className="h-4 w-4 rounded-full" />
-                  <Skeleton className="h-3 w-48" />
-                </div>
-                <Skeleton className="h-[500px] rounded-[2.5rem]" />
+              <Skeleton className="h-[500px] rounded-[2.5rem]" />
+            </section>
+
+            {/* Skeleton para Análisis de Aspectos */}
+            <section className="space-y-6">
+              <div className="flex items-center gap-3 px-4">
+                <Skeleton className="h-4 w-4 rounded-full" />
+                <Skeleton className="h-3 w-48" />
               </div>
-            </div>
+              <Skeleton className="h-[500px] rounded-[2.5rem]" />
+            </section>
 
             {/* Skeleton para Ranking */}
             <section className="space-y-6">
@@ -304,7 +327,7 @@ export default function AdminDashboard() {
             </section>
 
             {/* Visualizaciones de Programas y Aspectos */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            <div className="space-y-10">
               <div className="space-y-6">
                 <div className="flex items-center gap-3 px-4">
                   <CheckCircle2 className="h-4 w-4 text-emerald-600" />
@@ -312,8 +335,10 @@ export default function AdminDashboard() {
                 </div>
                 <GraficaPrograma
                   datos={dashboardData.estadisticasProgramas.length > 0 ? dashboardData.estadisticasProgramas : undefined}
-                  filters={metricFilters}
+                  filters={graficaProgramaFilters}
                   loading={loading}
+                  onProgramaFilterChange={handleProgramaFilterChange}
+                  programaSeleccionado={filtros.programaSeleccionado}
                 />
               </div>
 
@@ -332,7 +357,7 @@ export default function AdminDashboard() {
                 <Clock className="h-4 w-4 text-slate-900" />
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] italic leading-none">Liderazgo y Proyección Académica</h3>
               </div>
-              <RankingDocentes docentes={dashboardData.docentesRanking} loading={loading} />
+              <RankingDocentes docentes={dashboardData.docentesRanking} loading={loading} filtros={filtros} />
             </section>
           </div>
         )}

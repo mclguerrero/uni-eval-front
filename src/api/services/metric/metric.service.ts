@@ -139,6 +139,7 @@ export interface MateriaGrupoMetric {
   total_estudiantes_registrados: number;
   total_aspectos: number;
   porcentaje_cumplimiento: number;
+  nota_final_ponderada?: number | null;
 }
 
 export interface MateriaMetric {
@@ -156,6 +157,7 @@ export interface MateriaMetric {
   total_estudiantes_registrados: number;
   total_aspectos: number;
   porcentaje_cumplimiento: number;
+  nota_final_ponderada?: number | null;
   grupo?: string;
   grupos?: MateriaGrupoMetric[];
 }
