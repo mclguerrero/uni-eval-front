@@ -15,7 +15,7 @@ export const ProgramasSummaryCards: React.FC<ProgramasSummaryCardsProps> = ({
     <div className="mt-8">
       <div className="flex items-center gap-2 mb-4 px-1">
         <div className="h-1.5 w-1.5 rounded-full bg-blue-500"></div>
-        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+        <h4 className="text-xs font-medium text-gray-400">
           Resumen Analítico por Programa
         </h4>
       </div>
@@ -48,7 +48,7 @@ export const ProgramasSummaryCards: React.FC<ProgramasSummaryCardsProps> = ({
                 >
                   <GraduationCap className="h-3.5 w-3.5" />
                 </div>
-                <span className="text-[10px] font-bold text-gray-400 group-hover:text-gray-600 transition-colors uppercase tracking-tight truncate">
+                <span className="text-xs font-medium text-gray-400 group-hover:text-gray-600 transition-colors truncate">
                   {programa.nombre}
                 </span>
               </div>
@@ -57,12 +57,12 @@ export const ProgramasSummaryCards: React.FC<ProgramasSummaryCardsProps> = ({
                   <p className="text-2xl font-black text-gray-900 leading-none">
                     {porcentajeCompletado}%
                   </p>
-                  <p className="text-[10px] items-center flex gap-1 font-bold text-gray-400 mt-1 uppercase tracking-tighter">
-                    {completadas} / {total} <span className="text-[8px] opacity-50">EVAL</span>
+                  <p className="text-xs items-center flex gap-1 font-medium text-gray-400 mt-1">
+                    {completadas} / {total} <span className="text-[8px] opacity-50">Eval</span>
                   </p>
                 </div>
                 <div
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
                     porcentajeCompletado >= 80
                       ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
                       : porcentajeCompletado >= 60

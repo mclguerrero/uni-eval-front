@@ -55,7 +55,7 @@ export default function EvaluationCard({
           </div>
 
           <div>
-            <p className="text-xs text-gray-500 uppercase">Docente</p>
+            <p className="text-xs text-gray-500">Docente</p>
             <p className="font-semibold text-gray-900">
               {evaluacion.nombre_docente || "Docente"}
             </p>

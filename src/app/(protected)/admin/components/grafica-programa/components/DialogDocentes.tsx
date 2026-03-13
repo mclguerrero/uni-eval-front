@@ -1,16 +1,11 @@
 import React, { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { InfoModal } from "@/components/modals";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { GraduationCap, TrendingUp } from "lucide-react";
 import { DocenteCard } from "./DocenteCard";
 import { DocentesPagination } from "./DocentesPagination";
-import MateriasModal from "@/src/app/(protected)/admin/docente/components/MateriasModal";
+import MateriasModal from "@/src/app/(protected)/admin/components/MateriasModal";
 import { calcularEstado } from "../utils/estadoHelper";
 import { MetricFilters } from "@/src/api/services/metric/metric.service";
 import type { DocenteGeneralMetrics } from "@/src/api/services/metric/metric.service";
@@ -78,53 +73,80 @@ export const DialogDocentes: React.FC<DialogDocentesProps> = ({
 
   const docentesEnriquecidos = docentes.map(enriquecerDocente);
 
+  const modalFooter = !isLoading && docentesEnriquecidos && docentesEnriquecidos.length > 0 ? (
+    <div className="w-full flex flex-col gap-6">
+      <DocentesPagination
+        page={pagination.page}
+        total={pagination.total}
+        pages={pagination.pages}
+        docentes={docentesEnriquecidos}
+        onPreviousPage={() =>
+          onLoadMoreDocentes(programa, tipo, pagination.page - 1)
+        }
+        onNextPage={() =>
+          onLoadMoreDocentes(programa, tipo, pagination.page + 1)
+        }
+      />
+
+      <div className="flex items-center justify-between gap-4 pt-2 border-t border-slate-100">
+        <div className="flex items-center gap-4 bg-slate-50/70 px-4 py-2.5 rounded-2xl border border-slate-100">
+          <TrendingUp className="w-5 h-5 text-indigo-500" />
+          <div>
+            <p className="text-xs font-medium text-slate-400 leading-none mb-1">Cobertura del Programa</p>
+            <p className="text-sm font-semibold text-slate-900">
+              {docentesEnriquecidos.length} docentes visibles de {pagination.total}
+            </p>
+          </div>
+        </div>
+
+        <Button
+          variant="outline"
+          onClick={() => onOpenChange(false)}
+          className="px-8 rounded-2xl h-12 font-medium text-sm text-slate-500 border-2 border-slate-100 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all duration-300"
+        >
+          Cerrar Panel
+        </Button>
+      </div>
+    </div>
+  ) : undefined;
+
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[90vh] p-0 border-0 rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden">
-          <DialogHeader className="sr-only">
-            <DialogTitle>Rendimiento de Docentes</DialogTitle>
-            <DialogDescription>Detalles de docentes por programa</DialogDescription>
-          </DialogHeader>
-
-          {/* Header Premium */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 p-8 relative overflow-hidden flex-shrink-0">
-            <div className="absolute right-0 top-0 p-8 opacity-[0.03] pointer-events-none">
-              <TrendingUp className="w-64 h-64 text-blue-900" />
-            </div>
-            <div className="relative z-10 flex items-start justify-between">
-              <div className="flex items-center gap-6">
-                <div className="h-14 w-14 bg-white border-2 border-blue-100 rounded-[1.5rem] flex items-center justify-center shadow-sm">
-                  <GraduationCap className="h-7 w-7 text-blue-600" />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-black text-slate-900 italic tracking-tight uppercase leading-none mb-2">
-                    Rendimiento de Docentes
-                  </h2>
-                  <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
-                    <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-[10px]">
-                      Programa: <span className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg ml-1 border border-blue-100">{programa}</span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+      <InfoModal
+        isOpen={open}
+        onClose={() => onOpenChange(false)}
+        title="Rendimiento de Docentes"
+        description="Detalles de docentes por programa"
+        icon={GraduationCap}
+        variant="info"
+        size="full"
+        className="max-w-5xl"
+        contentClassName="p-10 bg-slate-50/30 custom-scrollbar"
+        footer={modalFooter}
+      >
+          <div className="mb-6 flex flex-wrap items-center gap-2 text-slate-400 font-medium text-xs">
+            <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
+            <span>Programa:</span>
+            <Badge variant="outline" className="rounded-lg bg-indigo-50 border-indigo-100 text-indigo-600 font-medium text-xs px-2 py-0.5">
+              {programa}
+            </Badge>
+            <span className="hidden sm:inline text-slate-300">|</span>
+            <span>
+              Segmento: {tipo === "completadas" ? "Completadas" : "Pendientes"}
+            </span>
           </div>
 
-          {/* Content */}
-          <div className="overflow-y-auto flex-1 p-8 bg-slate-50/30 custom-scrollbar">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-20">
                 <div className="relative">
                   <div className="h-12 w-12 rounded-full border-4 border-slate-100 border-t-blue-500 animate-spin"></div>
                 </div>
-                <p className="mt-6 text-slate-500 font-bold uppercase tracking-widest text-xs animate-pulse">
+                <p className="mt-6 text-slate-500 font-medium text-xs animate-pulse">
                   Cargando docentes...
                 </p>
               </div>
             ) : docentesEnriquecidos && docentesEnriquecidos.length > 0 ? (
-              <div className="space-y-3 animate-in fade-in duration-300">
+              <div className="space-y-4 animate-in fade-in duration-300">
                 {docentesEnriquecidos.map((docente, index) => (
                   <DocenteCard
                     key={`${docente.docente}-${index}`}
@@ -143,31 +165,11 @@ export const DialogDocentes: React.FC<DialogDocentesProps> = ({
                 <div className="h-16 w-16 bg-white rounded-3xl border border-slate-100 flex items-center justify-center shadow-inner mb-4">
                   <GraduationCap className="w-8 h-8 opacity-20" />
                 </div>
-                <p className="text-lg font-black italic">Sin registros</p>
+                <p className="text-lg font-bold">Sin registros</p>
                 <p className="font-medium text-sm mt-2">No se encontraron docentes evaluados en este programa</p>
               </div>
             )}
-          </div>
-
-          {/* Footer con paginación */}
-          {!isLoading && docentesEnriquecidos && docentesEnriquecidos.length > 0 && (
-            <div className="bg-white border-t border-slate-100 p-8 flex-shrink-0">
-              <DocentesPagination
-                page={pagination.page}
-                total={pagination.total}
-                pages={pagination.pages}
-                docentes={docentesEnriquecidos}
-                onPreviousPage={() =>
-                  onLoadMoreDocentes(programa, tipo, pagination.page - 1)
-                }
-                onNextPage={() =>
-                  onLoadMoreDocentes(programa, tipo, pagination.page + 1)
-                }
-              />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      </InfoModal>
 
       {/* Modales fuera del Dialog para que ocupen su tamaño completo */}
       {showMateriasModal && selectedDocente && (

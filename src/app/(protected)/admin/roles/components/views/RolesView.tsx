@@ -31,13 +31,13 @@ export function RolesView({
         <div className="space-y-2">
           <div className="flex items-center gap-3">
             <div className="h-2 w-10 bg-blue-600 rounded-full" />
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight italic uppercase leading-none">Arquitectura de Seguridad</h2>
+            <h2 className="text-3xl font-bold text-slate-900 tracking-tight leading-none">Arquitectura de Seguridad</h2>
           </div>
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-13">Definición de jerarquías y privilegios sistémicos</p>
+          <p className="text-xs font-medium text-slate-400 ml-13">Definición de jerarquías y privilegios sistémicos</p>
         </div>
         <Button
           onClick={() => setModalRol({ isOpen: true, rol: undefined })}
-          className="bg-slate-900 hover:bg-slate-800 text-white font-black px-8 py-7 rounded-2xl shadow-xl shadow-slate-200 transition-all hover:scale-105 active:scale-95 text-[11px] uppercase tracking-widest gap-3"
+          className="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-8 py-7 rounded-2xl shadow-xl shadow-slate-200 transition-all hover:scale-105 active:scale-95 text-sm gap-3"
         >
           <Plus className="h-5 w-5" />
           Desplegar Nuevo Rol
@@ -53,7 +53,7 @@ export function RolesView({
           <Input
             type="text"
             placeholder="Interrogar repositorio de roles..."
-            className="pl-14 py-8 bg-slate-50/50 border-2 border-slate-100 rounded-[1.8rem] text-sm font-bold focus-visible:ring-blue-600/5 focus-visible:border-blue-600 transition-all placeholder:text-slate-400 placeholder:uppercase placeholder:tracking-widest placeholder:text-[10px]"
+            className="pl-14 py-8 bg-slate-50/50 border-2 border-slate-100 rounded-[1.8rem] text-sm font-bold focus-visible:ring-blue-600/5 focus-visible:border-blue-600 transition-all placeholder:text-slate-400 placeholder:text-xs"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -68,8 +68,8 @@ export function RolesView({
            </div>
            <div className="h-10 w-px bg-slate-100" />
            <div>
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Capa de Seguridad</p>
-              <p className="text-sm font-black text-slate-900 uppercase italic tracking-tighter">{roles.length} Definiciones</p>
+              <p className="text-xs font-medium text-slate-400 leading-none mb-1">Capa de Seguridad</p>
+              <p className="text-sm font-bold text-slate-900">{roles.length} Definiciones</p>
            </div>
         </div>
       </div>
@@ -80,11 +80,11 @@ export function RolesView({
           <div className="relative w-24 h-24 mx-auto mb-8">
             <div className="absolute inset-0 bg-blue-500/10 blur-2xl rounded-full animate-pulse" />
             <div className="relative h-24 w-24 bg-white rounded-[2rem] flex items-center justify-center shadow-xl border border-slate-100 group-hover:scale-110 transition-transform">
-              <ShieldCheck className="h-10 h-10 text-slate-200" />
+              <ShieldCheck className="h-10 w-10 text-slate-200" />
             </div>
           </div>
-          <h3 className="text-2xl font-black text-slate-900 uppercase italic mb-3 tracking-tight">Núcleo de Seguridad Vacío</h3>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest max-w-sm mx-auto leading-relaxed">
+          <h3 className="text-2xl font-bold text-slate-900 mb-3 tracking-tight">Núcleo de Seguridad Vacío</h3>
+          <p className="text-xs font-medium text-slate-400 max-w-sm mx-auto leading-relaxed">
             {searchTerm ? `No se detectaron roles bajo el parámetro "${searchTerm}"` : "El sistema opera bajo una configuración base. Use el botón superior para escalar privilegios."}
           </p>
         </div>
@@ -125,24 +125,24 @@ export function RolesView({
 
               <div className="space-y-3 relative z-10">
                 <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="h-6 px-3 bg-white border-2 border-slate-100 text-slate-400 font-black text-[9px] uppercase tracking-[0.2em] rounded-lg">
+                    <Badge variant="outline" className="h-6 px-3 bg-white border-2 border-slate-100 text-slate-400 font-semibold text-xs rounded-lg">
                       ID: {rol.id}
                     </Badge>
                     <div className="h-px flex-1 bg-slate-50 group-hover:bg-blue-100 transition-colors" />
                 </div>
-                <h3 className="font-black text-slate-900 uppercase tracking-tighter text-2xl group-hover:text-blue-600 transition-colors italic leading-tight">
+                <h3 className="font-bold text-slate-900 text-2xl group-hover:text-blue-600 transition-colors leading-tight">
                   {rol.nombre}
                 </h3>
                 <div className="flex items-center gap-2.5">
                   <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Control de Acceso Total</span>
+                  <span className="text-xs font-medium text-slate-400">Control de Acceso Total</span>
                 </div>
               </div>
 
               <div className="mt-10 pt-8 border-t-2 border-slate-50 flex items-center justify-between relative z-10">
                 <div className="flex flex-col">
-                   <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest leading-none mb-1">Integridad</p>
-                   <p className="text-[11px] font-bold text-slate-600 uppercase">Verificado</p>
+                   <p className="text-xs font-medium text-slate-300 leading-none mb-1">Integridad</p>
+                   <p className="text-sm font-semibold text-slate-600">Verificado</p>
                 </div>
                 <div className="h-12 w-12 rounded-2xl bg-slate-50 flex items-center justify-center group-hover:bg-blue-50 transition-colors">
                    <MoreVertical className="w-5 h-5 text-slate-300 group-hover:text-blue-400" />

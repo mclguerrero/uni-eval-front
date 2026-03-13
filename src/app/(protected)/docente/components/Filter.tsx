@@ -256,7 +256,7 @@ export default function Filtro({
         {/* Active filter chip */}
         {filtroActivo && configuracionSeleccionada && (
           <div className="flex items-center gap-2 px-5 py-2.5 bg-muted/40 border-b border-border">
-            <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground mr-1">
+            <span className="text-xs font-medium text-muted-foreground mr-1">
               Activo
             </span>
             <FilterChip
@@ -270,7 +270,7 @@ export default function Filtro({
         {/* Filter field */}
         <div className="p-5">
           <div className="space-y-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
               <Settings2 className="h-3.5 w-3.5" />
               Configuración
               <span className="text-destructive">*</span>
@@ -338,7 +338,7 @@ export default function Filtro({
                 <div className="rounded-md border border-border bg-muted/30 p-4">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-1">
-                      <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+                      <p className="text-xs font-medium text-muted-foreground">
                         Tipo
                       </p>
                       <p className="text-sm font-medium text-foreground">
@@ -348,7 +348,7 @@ export default function Filtro({
                       </p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+                      <p className="text-xs font-medium text-muted-foreground">
                         Fecha inicio
                       </p>
                       <div className="flex items-center gap-1.5">
@@ -359,7 +359,7 @@ export default function Filtro({
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+                      <p className="text-xs font-medium text-muted-foreground">
                         Fecha fin
                       </p>
                       <div className="flex items-center gap-1.5">

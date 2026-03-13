@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { metricService } from '@/src/api/services/metric/metric.service';
-import { httpClient } from '@/src/api/core/HttpClient';
 import type { 
   DocenteGeneralMetrics, 
   DocenteMateriasMetrics, 
@@ -33,29 +32,12 @@ import { PendientesPorMateriaChart } from '../components/PendientesPorMateriaCha
 import { AspectosEvaluacionChart } from '../components/AspectosEvaluacionChart';
 import Filtro from '../components/Filter';
 
-// Tipos locales para endpoint /user de docente
-interface DocenteMateria {
-  id: number;
-  codigo: number;
-  nombre: string;
-  programa: string;
-  semestre: string;
-  grupos: Array<{ nombre: string }>;
-}
-
-interface DocenteUserData {
-  documento: string;
-  nombre: string;
-  materias: DocenteMateria[];
-}
-
 export default function DocenteDashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   // Datos del docente
-  const [userData, setUserData] = useState<DocenteUserData | null>(null);
   const [dashboardData, setDashboardData] = useState<DocenteGeneralMetrics | null>(null);
   const [materiasData, setMateriasData] = useState<DocenteMateriasMetrics | null>(null);
   const [aspectosData, setAspectosData] = useState<DocenteAspectosMetrics | null>(null);
@@ -87,12 +69,6 @@ export default function DocenteDashboardPage() {
       try {
         setLoading(true);
         setError(null);
-
-        // Cargar datos del usuario desde /user usando httpClient
-        console.log('🔍 Cargando datos de usuario...');
-        const userDataResponse = await httpClient.get<DocenteUserData>('/user');
-        console.log('✅ Datos de usuario:', userDataResponse);
-        setUserData(userDataResponse);
 
         // Cargar dashboard del docente
         console.log('🔍 Cargando dashboard del docente:', { cfg_t: cfgT, docente });
@@ -193,7 +169,7 @@ export default function DocenteDashboardPage() {
     );
   }
 
-  if (!userData || !dashboardData) {
+  if (!dashboardData || !user) {
     return (
       <div className="p-6">
         <Alert>
@@ -211,7 +187,7 @@ export default function DocenteDashboardPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Mi Dashboard</h1>
           <p className="text-muted-foreground mt-1">
-            {userData.nombre}
+            {user.user_name}
           </p>
         </div>
         <Badge variant="outline" className="text-lg px-4 py-2">

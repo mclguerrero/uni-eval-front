@@ -1,44 +1,60 @@
-"use client"
+'use client'
 
-import { BarChart, FileText, Users, FileCode, Download, Star } from "lucide-react"
-import { AppSidebar, type SidebarMenuItem } from "../../../../../components/ui/app-sidebar"
+import {
+  BarChart,
+  FileText,
+  Users,
+  FileCode,
+  Download,
+  Star
+} from 'lucide-react'
+import type { SidebarMenuItem } from '../../../../../components/ui/app-sidebar'
+import { AppSidebar } from '../../../../../components/ui/app-sidebar'
+import { ADMIN_ROUTES } from '../constants'
+import { createModuleLogger } from '../lib/logger'
 
+const logger = createModuleLogger('AdminSidebar')
+
+/**
+ * Items del menú de administración
+ * Centralizado para fácil mantenimiento
+ */
 const adminMenuItems: SidebarMenuItem[] = [
   {
-    href: "/admin/dashboard",
+    href: ADMIN_ROUTES.DASHBOARD,
     icon: BarChart,
-    label: "Dashboard",
-    description: "Panel principal"
+    label: 'Dashboard',
+    description: 'Panel principal de control'
   },
   {
-    href: "/admin/docente",
+    href: ADMIN_ROUTES.DOCENTES,
     icon: Users,
-    label: "Docentes",
-    description: "Gestión docentes"
+    label: 'Docentes',
+    description: 'Gestión y seguimiento de docentes'
   },
   {
-    href: "/admin/roles",
+    href: ADMIN_ROUTES.ROLES,
     icon: Star,
-    label: "Roles",
-    description: "Permisos usuario"
+    label: 'Roles',
+    description: 'Asignación de permisos y roles'
   },
   {
-    href: "/admin/formulario",
+    href: ADMIN_ROUTES.FORMULARIO,
     icon: FileCode,
-    label: "Formulario",
-    description: "Crear formularios"
+    label: 'Formulario',
+    description: 'Creación y edición de formularios'
   },
   {
-    href: "/admin/informes",
+    href: ADMIN_ROUTES.INFORMES,
     icon: FileText,
-    label: "Informes",
-    description: "Evaluaciones genéricas"
+    label: 'Informes',
+    description: 'Reportes evaluaciones'
   },
   {
-    href: "/admin/reportes",
+    href: ADMIN_ROUTES.REPORTES,
     icon: Download,
-    label: "Reportes",
-    description: "Reportes y análisis IA"
+    label: 'Reportes',
+    description: 'Análisis avanzado con IA'
   }
 ]
 
@@ -47,16 +63,28 @@ interface AdminSidebarProps {
   onToggle?: (collapsed: boolean) => void
 }
 
-export function AdminSidebar({ isCollapsed = false, onToggle }: AdminSidebarProps) {
+/**
+ * Sidebar de Administración
+ * Menú principal de navegación para el panel admin
+ */
+export function AdminSidebar({ 
+  isCollapsed = false, 
+  onToggle 
+}: AdminSidebarProps) {
+  const handleToggle = (collapsed: boolean) => {
+    logger.debug(`Sidebar ${collapsed ? 'colapsado' : 'expandido'}`)
+    onToggle?.(collapsed)
+  }
+
   return (
     <AppSidebar
-      title="Admin"
+      title='Admin'
       titleIcon={BarChart}
       menuItems={adminMenuItems}
-      primaryColor="blue"
-      secondaryColor="indigo"
+      primaryColor='blue'
+      secondaryColor='indigo'
       isCollapsed={isCollapsed}
-      onToggle={onToggle}
+      onToggle={handleToggle}
     />
   )
 }

@@ -26,6 +26,19 @@ export interface UserRol {
   fecha_actualizacion?: string | null;
 }
 
+export interface DataloginInfo {
+  user_name: string;
+  user_username: string;
+  user_email: string;
+  user_idrole: number;
+  user_statusid: string;
+  role_name: string;
+}
+
+export interface UserRolWithDatalogin extends UserRol {
+  datalogin: DataloginInfo;
+}
+
 export interface Prog {
   id: number;
   nombre: string;
@@ -36,16 +49,13 @@ export interface UserProg {
   user_rol_id: number;
   prog_id: number;
   prog_nombre?: string;
-  datalogin?: {
-    user_name: string;
-    user_username: string;
-    user_email: string;
-    user_idrole: number;
-    user_statusid: string;
-    role_name: string;
-  };
+  datalogin?: DataloginInfo;
   fecha_creacion?: string | null;
   fecha_actualizacion?: string | null;
+}
+
+export interface UserProgWithDatalogin extends UserProg {
+  datalogin: DataloginInfo;
 }
 
 export interface CreateRolInput {
@@ -103,7 +113,7 @@ class UserRolService extends BaseService<UserRol, CreateUserRolInput, UpdateUser
    * Obtiene todos los roles de usuario con información de datalogin
    * Endpoint: GET /user/rol/u
    */
-  async getUserRoles(): Promise<ApiResponse<any>> {
+  async getUserRoles(): Promise<ApiResponse<UserRolWithDatalogin[]>> {
     return this.getCustom('/u');
   }
 }
@@ -123,7 +133,7 @@ class UserProgService extends BaseService<UserProg, CreateUserProgInput, UpdateU
    * Obtiene todos los programas de usuario con información de datalogin
    * Endpoint: GET /user/prog/u
    */
-  async getUserProgs(): Promise<ApiResponse<any>> {
+  async getUserProgs(): Promise<ApiResponse<UserProgWithDatalogin[]>> {
     return this.getCustom('/u');
   }
 }

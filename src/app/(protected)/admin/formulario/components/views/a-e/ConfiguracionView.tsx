@@ -43,7 +43,7 @@ interface ConfiguracionViewProps {
   setModalConfiguracionEscala: (value: any) => void;
   setModalAe: (value: any) => void;
   handleEliminarConfiguracion: (config: ConfiguracionTipo, onSuccess?: () => void) => void;
-  refreshData: () => void;
+  refreshData: () => void | Promise<void>;
   rolesDisponibles?: RolMixto[];
 }
 
@@ -190,10 +190,10 @@ export function ConfiguracionView({
     ]);
   };
 
-  const handleConfigCreated = (newConfig: ConfiguracionTipo) => {
-    loadData();
+  const handleConfigCreated = async (newConfig: ConfiguracionTipo) => {
+    await loadData();
     setSelectedConfig(newConfig);
-    refreshData();
+    await refreshData();
   };
 
   const handleSelectConfig = (config: ConfiguracionTipo) => {
@@ -201,11 +201,11 @@ export function ConfiguracionView({
   };
 
   const handleDeleteConfig = (config: ConfiguracionTipo) => {
-    handleEliminarConfiguracion(config, () => {
+    handleEliminarConfiguracion(config, async () => {
       if (selectedConfig?.id === config.id) {
         setSelectedConfig(null);
       }
-      loadData();
+      await loadData();
     });
   };
 
@@ -218,32 +218,32 @@ export function ConfiguracionView({
           description: "La configuración ha sido modificada correctamente.",
         });
         await loadData();
-        refreshData();
+        await refreshData();
       }
     } catch (error) {
       console.error("Error toggling field:", error);
     }
   };
 
-  const handleAspectosConfigured = () => {
+  const handleAspectosConfigured = async () => {
     if (selectedConfig) {
-      loadConfigDetails(selectedConfig.id);
+      await loadConfigDetails(selectedConfig.id);
     }
-    refreshData();
+    await refreshData();
   };
 
-  const handleEscalasConfigured = () => {
+  const handleEscalasConfigured = async () => {
     if (selectedConfig) {
-      loadConfigDetails(selectedConfig.id);
+      await loadConfigDetails(selectedConfig.id);
     }
-    refreshData();
+    await refreshData();
   };
 
-  const handleRolesUpdated = () => {
+  const handleRolesUpdated = async () => {
     if (selectedConfig) {
-      loadConfigDetails(selectedConfig.id);
+      await loadConfigDetails(selectedConfig.id);
     }
-    refreshData();
+    await refreshData();
   };
 
   return (
@@ -252,7 +252,7 @@ export function ConfiguracionView({
       <section className="space-y-6">
         <div className="flex items-center gap-3 px-4">
           <Trophy className="h-4 w-4 text-amber-500" />
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] italic leading-none">Workflow de Configuración</h3>
+          <h3 className="text-xs font-semibold text-slate-400 leading-none">Workflow de Configuración</h3>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -272,10 +272,10 @@ export function ConfiguracionView({
                     {step.completed ? <CheckCircle2 className="h-5 w-5" /> : <span className="text-xs font-black">{step.id}</span>}
                   </div>
                   <div>
-                    <h4 className={`text-[10px] font-black uppercase tracking-widest ${step.completed ? 'text-emerald-700' : 'text-slate-900'}`}>
+                    <h4 className={`text-xs font-semibold ${step.completed ? 'text-emerald-700' : 'text-slate-900'}`}>
                       {step.title}
                     </h4>
-                    <p className="text-[9px] font-medium text-slate-400 mt-1 uppercase tracking-tighter">
+                    <p className="text-xs font-medium text-slate-400 mt-1">
                       {step.description}
                     </p>
                   </div>
@@ -297,12 +297,12 @@ export function ConfiguracionView({
           <div className="flex items-center justify-between px-4">
             <div className="flex items-center gap-3">
               <Settings2 className="h-4 w-4 text-indigo-600" />
-              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] italic leading-none">Inventario</h3>
+              <h3 className="text-xs font-semibold text-slate-400 leading-none">Inventario</h3>
             </div>
             <Button
               size="sm"
               onClick={() => setModalConfiguracionTipo({ isOpen: true, configuracion: undefined })}
-              className="h-8 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[9px] uppercase tracking-widest px-4 shadow-lg shadow-indigo-100"
+              className="h-8 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm px-4 shadow-lg shadow-indigo-100"
             >
               <Plus className="h-3 w-3 mr-2" />
               Nuevo
@@ -314,7 +314,7 @@ export function ConfiguracionView({
               {configuraciones.length === 0 ? (
                 <div className="bg-slate-50/50 border border-slate-100 border-dashed rounded-[2.5rem] p-12 text-center">
                   <FileText className="h-10 w-10 text-slate-200 mx-auto mb-4" />
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sin Registros</p>
+                  <p className="text-xs font-medium text-slate-400">Sin Registros</p>
                 </div>
               ) : (
                 configuraciones.map((config) => {
@@ -332,14 +332,14 @@ export function ConfiguracionView({
                       <div className="space-y-4">
                         <div className="flex justify-between items-start gap-4">
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-black text-slate-900 text-sm uppercase tracking-tight truncate">
+                            <h4 className="font-bold text-slate-900 text-sm truncate">
                               {config.tipo_evaluacion?.tipo?.nombre || `Config #${config.id}`}
                             </h4>
                             <div className="flex items-center gap-2 mt-1">
-                               <Badge className="bg-white border border-slate-200 text-slate-500 rounded-lg text-[9px] font-black uppercase tracking-tighter px-2 h-5">
+                               <Badge className="bg-white border border-slate-200 text-slate-500 rounded-lg text-xs font-semibold px-2 h-5">
                                  {config.tipo_form?.nombre || "General"}
                                </Badge>
-                               <span className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter">ID: {config.id}</span>
+                               <span className="text-xs font-medium text-slate-300">ID: {config.id}</span>
                             </div>
                           </div>
                           <div className={`h-2.5 w-2.5 rounded-full shadow-sm transition-all duration-500 ${config.es_activo ? 'bg-emerald-500' : 'bg-slate-200'}`} />
@@ -347,14 +347,14 @@ export function ConfiguracionView({
 
                         <div className="grid grid-cols-2 gap-4 bg-white/50 p-3 rounded-2xl border border-slate-100/50">
                           <div className="space-y-1">
-                            <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Apertura</span>
+                            <span className="text-xs font-medium text-slate-300">Apertura</span>
                             <div className="flex items-center gap-1.5 text-slate-600">
                                <Calendar className="h-3 w-3" />
                                <span className="text-[10px] font-bold">{new Date(config.fecha_inicio).toLocaleDateString()}</span>
                             </div>
                           </div>
                           <div className="space-y-1">
-                            <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Cierre</span>
+                            <span className="text-xs font-medium text-slate-300">Cierre</span>
                             <div className="flex items-center gap-1.5 text-slate-600">
                                <Clock className="h-3 w-3" />
                                <span className="text-[10px] font-bold">{new Date(config.fecha_fin).toLocaleDateString()}</span>
@@ -370,7 +370,7 @@ export function ConfiguracionView({
                               e.stopPropagation();
                               setModalConfiguracionTipo({ isOpen: true, configuracion: config });
                             }}
-                            className="flex-1 h-9 rounded-xl hover:bg-white hover:text-indigo-600 font-black text-[9px] uppercase tracking-widest shadow-sm border border-transparent hover:border-slate-100"
+                            className="flex-1 h-9 rounded-xl hover:bg-white hover:text-indigo-600 font-semibold text-sm shadow-sm border border-transparent hover:border-slate-100"
                           >
                             <Edit className="h-3 w-3 mr-2" />
                             Editar
@@ -382,7 +382,7 @@ export function ConfiguracionView({
                               e.stopPropagation();
                               handleDeleteConfig(config);
                             }}
-                            className="flex-1 h-9 rounded-xl hover:bg-rose-50 hover:text-rose-600 font-black text-[9px] uppercase tracking-widest"
+                            className="flex-1 h-9 rounded-xl hover:bg-rose-50 hover:text-rose-600 font-semibold text-sm"
                           >
                             <Trash2 className="h-3 w-3 mr-2" />
                             Eliminar
@@ -405,7 +405,7 @@ export function ConfiguracionView({
                  <div className="h-20 w-20 bg-white rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-sm border border-slate-100">
                     <Settings className="h-10 w-10 text-slate-100" />
                  </div>
-                 <h3 className="text-xl font-black text-slate-900 italic uppercase tracking-tight mb-2">Entorno Vacío</h3>
+                 <h3 className="text-xl font-bold text-slate-900 mb-2">Entorno Vacío</h3>
                  <p className="text-slate-400 font-medium text-sm">
                    Selecciona un modelo del inventario para iniciar la orquestación de componentes y reglas de negocio.
                  </p>
@@ -417,10 +417,10 @@ export function ConfiguracionView({
               <div className="bg-indigo-600 rounded-[2.5rem] p-8 text-white shadow-xl shadow-indigo-200">
                  <div className="flex items-center justify-between mb-8">
                     <div>
-                       <h3 className="text-lg font-black italic uppercase tracking-tight leading-none">Centro de Comando</h3>
-                       <p className="text-indigo-100 text-[10px] font-bold uppercase tracking-widest mt-2">Parámetros de ejecución en tiempo real</p>
+                       <h3 className="text-lg font-bold tracking-tight leading-none">Centro de Comando</h3>
+                       <p className="text-indigo-100 text-sm font-medium mt-2">Parámetros de ejecución en tiempo real</p>
                     </div>
-                    <Badge className="bg-white/20 hover:bg-white/30 text-white border-white/20 rounded-xl px-4 py-1.5 font-black text-[9px] uppercase tracking-widest backdrop-blur-md">
+                    <Badge className="bg-white/20 hover:bg-white/30 text-white border-white/20 rounded-xl px-4 py-1.5 font-semibold text-sm backdrop-blur-md">
                        Estado: {selectedConfig.es_activo ? "OPERATIVO" : "EN PAUSA"}
                     </Badge>
                  </div>
@@ -434,7 +434,7 @@ export function ConfiguracionView({
                           : 'bg-black/10 border-white/10 text-white/50'
                       }`}
                     >
-                       <span className="text-[10px] font-black uppercase tracking-widest">Disponibilidad</span>
+                       <span className="text-sm font-semibold">Disponibilidad</span>
                        <div className={`h-4 w-4 rounded-full border-2 border-current flex items-center justify-center transition-all ${
                          selectedConfig.es_activo ? 'bg-emerald-400 border-emerald-400' : ''
                        }`}>
@@ -450,7 +450,7 @@ export function ConfiguracionView({
                           : 'bg-black/10 border-white/10 text-white/50'
                       }`}
                     >
-                       <span className="text-[10px] font-black uppercase tracking-widest">Feedback Libre</span>
+                       <span className="text-sm font-semibold">Feedback Libre</span>
                        <div className={`h-4 w-4 rounded-full border-2 border-current flex items-center justify-center transition-all ${
                          selectedConfig.es_cmt_gen ? 'bg-indigo-300 border-indigo-300' : ''
                        }`}>
@@ -466,7 +466,7 @@ export function ConfiguracionView({
                           : 'bg-black/10 border-white/10 text-white/50'
                       }`}
                     >
-                       <span className="text-[10px] font-black uppercase tracking-widest">Feedback Forzado</span>
+                       <span className="text-xs font-semibold">Feedback Forzado</span>
                        <div className={`h-4 w-4 rounded-full border-2 border-current flex items-center justify-center transition-all ${
                          selectedConfig.es_cmt_gen_oblig ? 'bg-rose-300 border-rose-300' : ''
                        }`}>
@@ -481,25 +481,25 @@ export function ConfiguracionView({
                 <TabsList className="bg-slate-100/50 p-1.5 rounded-[2rem] border border-slate-200/50 grid grid-cols-4 h-14">
                   <TabsTrigger 
                     value="aspectos" 
-                    className="rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm"
+                      className="rounded-[1.5rem] font-semibold text-sm data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm"
                   >
                     Aspectos
                   </TabsTrigger>
                   <TabsTrigger 
                     value="escalas" 
-                    className="rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm"
+                      className="rounded-[1.5rem] font-semibold text-sm data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm"
                   >
                     Escalas
                   </TabsTrigger>
                   <TabsTrigger 
                     value="a-e" 
-                    className="rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm"
+                      className="rounded-[1.5rem] font-semibold text-sm data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm"
                   >
                     Matriz A/E
                   </TabsTrigger>
                   <TabsTrigger 
                     value="roles" 
-                    className="rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm"
+                      className="rounded-[1.5rem] font-semibold text-sm data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm"
                   >
                     Permisos
                   </TabsTrigger>
@@ -541,7 +541,11 @@ export function ConfiguracionView({
                       aspectosConEscalas={aspectosConEscalas}
                       configuracionAspectos={configuracionAspectos}
                       cfgTId={selectedConfig.id}
-                      setModalAe={() => setModalAe({ isOpen: true, cfgTId: selectedConfig.id })}
+                      setModalAe={() => setModalAe({
+                        isOpen: true,
+                        cfgTId: selectedConfig.id,
+                        onSuccess: handleAspectosConfigured,
+                      })}
                       onConfigUpdated={handleAspectosConfigured}
                     />
                   </TabsContent>

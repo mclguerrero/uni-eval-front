@@ -8,15 +8,18 @@ import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { configuracionEvaluacionService, type EvalByUserItem } from "@/src/api"
-import { useParams } from "next/navigation"
+import { useParams, usePathname } from "next/navigation"
 import { BookOpen, GraduationCap } from "lucide-react"
 import EvaluationCard from "../../../../estudiante/components/EvaluationCard"
+import { getEvalBasePath } from "../../utils/route-base"
 
 export default function EstudianteDashboard() {
   const { toast } = useToast()
   const [evaluaciones, setEvaluaciones] = useState<EvalByUserItem[]>([])
   const [loading, setLoading] = useState(true)
   const params = useParams()
+  const pathname = usePathname()
+  const evalBasePath = getEvalBasePath(pathname)
 
   const configId = params?.id
   const id = configId ? (Array.isArray(configId) ? Number(configId[0]) : Number(configId)) : null
@@ -96,7 +99,7 @@ export default function EstudianteDashboard() {
             ) : (
               <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-7">
                 {evaluaciones.map(e => (
-                  <EvaluationCard key={e.id} evaluacion={e} />
+                  <EvaluationCard key={e.id} evaluacion={e} basePath={evalBasePath} />
                 ))}
               </div>
             )}

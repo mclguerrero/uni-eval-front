@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { metricService } from '@/src/api/services/metric/metric.service';
-import { httpClient } from '@/src/api/core/HttpClient';
 import type { 
   DocenteMateriasMetrics, 
   MateriaCompletionMetrics,
@@ -16,19 +15,14 @@ import { AlertCircle, BookOpen } from 'lucide-react';
 import { MateriaCard } from '../../docente/components/MateriaCard';
 import Filtro from '../../docente/components/Filter';
 
-interface DocenteMateria {
-  id: number;
-  codigo: number;
-  nombre: string;
-  programa: string;
-  semestre: string;
-  grupos: Array<{ nombre: string }>;
-}
-
-interface DocenteUserData {
-  documento: string;
-  nombre: string;
-  materias: DocenteMateria[];
+function getErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'string') return err;
+  if (err && typeof err === 'object' && 'message' in err) {
+    const message = (err as { message?: unknown }).message;
+    if (typeof message === 'string') return message;
+  }
+  return 'Error al cargar datos';
 }
 
 export default function MisMateriasPage() {
@@ -36,7 +30,6 @@ export default function MisMateriasPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const [userData, setUserData] = useState<DocenteUserData | null>(null);
   const [materiasData, setMateriasData] = useState<DocenteMateriasMetrics | null>(null);
   
   const [selectedMateria, setSelectedMateria] = useState<string | null>(null);
@@ -64,12 +57,7 @@ export default function MisMateriasPage() {
         setLoading(true);
         setError(null);
 
-        console.log('🔍 Cargando datos de usuario...');
-        const userDataResponse = await httpClient.get<DocenteUserData>('/user');
-        console.log('✅ Datos de usuario:', userDataResponse);
-        setUserData(userDataResponse);
-
-        console.log('🔍 Cargando materias del docente...');
+        console.log('🔍 Cargando materias del docente:', docente);
         const materias = await metricService.getDocenteMaterias(docente, {
           cfg_t: cfgT
         });
@@ -77,8 +65,9 @@ export default function MisMateriasPage() {
         setMateriasData(materias);
 
       } catch (err) {
-        console.error('❌ Error al cargar datos:', err);
-        setError(err instanceof Error ? err.message : 'Error al cargar datos');
+        const message = getErrorMessage(err);
+        console.error('❌ Error al cargar datos:', message);
+        setError(message);
       } finally {
         setLoading(false);
       }
@@ -108,7 +97,8 @@ export default function MisMateriasPage() {
         setAspectosData(aspectos);
 
       } catch (err) {
-        console.error('Error al cargar detalles de materia:', err);
+        const message = getErrorMessage(err);
+        console.error('Error al cargar detalles de materia:', message);
       }
     };
 
@@ -130,12 +120,12 @@ export default function MisMateriasPage() {
     );
   }
 
-  if (!userData) {
+  if (!user) {
     return (
       <div className="container mx-auto p-6">
         <Alert>
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>No se encontraron datos del docente</AlertDescription>
+          <AlertDescription>No se encontraron datos del usuario</AlertDescription>
         </Alert>
       </div>
     );
@@ -151,7 +141,7 @@ export default function MisMateriasPage() {
             Mis Materias
           </h1>
           <p className="text-muted-foreground mt-1">
-            {userData.nombre}
+            {user.user_name}
           </p>
         </div>
       </div>

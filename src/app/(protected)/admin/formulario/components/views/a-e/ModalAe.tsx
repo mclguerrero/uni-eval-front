@@ -5,13 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { BaseModal } from "@/components/modals";
 import {
   Table,
   TableBody,
@@ -38,7 +32,7 @@ import {
 interface ModalAeProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: () => void | Promise<void>;
   cfgTId?: number | null;
   aspectos: Aspecto[];
   escalas: Escala[];
@@ -47,28 +41,37 @@ interface ModalAeProps {
 interface AspectoEnriquecido extends Aspecto {
   cfg_t_id: number;
   tipo_evaluacion: string;
+  tipo_form_nombre: string; // Nombre del tipo de formulario (tipo_form_id.nombre)
   es_configuracion_actual: boolean;
 }
 
 interface EscalaEnriquecida extends Escala {
   cfg_t_id: number;
   tipo_evaluacion: string;
+  tipo_form_nombre: string; // Nombre del tipo de formulario (tipo_form_id.nombre)
   puntaje: number;
   es_configuracion_actual: boolean;
 }
 
 interface AspectoState {
   id: number;
+  cfg_t_id: number;
   selected: boolean;
   es_cmt: boolean;
   es_cmt_oblig: boolean;
+}
+
+interface EscalaState {
+  id: number;
+  cfg_t_id: number;
+  selected: boolean;
 }
 
 interface AeItemState {
   id: string;
   tipoConfiguracion: 'conEscalas' | 'sinEscalas' | null; // null = sin seleccionar tipo
   es_pregunta_abierta: boolean; // Deprecated, usar tipoConfiguracion
-  escalaIds: number[];
+  escalas: EscalaState[];
   escalaOpen: { es_cmt: boolean; es_cmt_oblig: boolean };
   aspectos: AspectoState[];
   currentStep: number;
@@ -77,16 +80,24 @@ interface AeItemState {
 const createAspectosState = (aspectos: AspectoEnriquecido[], es_pregunta_abierta: boolean): AspectoState[] =>
   aspectos.map((a) => ({
     id: a.id,
+    cfg_t_id: a.cfg_t_id,
     selected: false,
     es_cmt: es_pregunta_abierta, // Para preguntas abiertas, el comentario siempre está activo
     es_cmt_oblig: false,
   }));
 
-const createItem = (aspectos: AspectoEnriquecido[]): AeItemState => ({
+const createEscalasState = (escalas: EscalaEnriquecida[]): EscalaState[] =>
+  escalas.map((e) => ({
+    id: e.id,
+    cfg_t_id: e.cfg_t_id,
+    selected: false,
+  }));
+
+const createItem = (aspectos: AspectoEnriquecido[], escalas: EscalaEnriquecida[]): AeItemState => ({
   id: `${Date.now()}-${Math.random()}`,
   tipoConfiguracion: null, // Sin tipo asignado, el usuario debe seleccionar
   es_pregunta_abierta: false, // Se asignará cuando se seleccione tipo
-  escalaIds: [],
+  escalas: createEscalasState(escalas),
   escalaOpen: { es_cmt: true, es_cmt_oblig: false },
   aspectos: createAspectosState(aspectos, false), // Por defecto false
   currentStep: 1, // Step 1 es seleccionar tipo
@@ -124,42 +135,49 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
       const response = await configuracionEvaluacionService.getCfgACfgE();
       if (response.success && response.data && Array.isArray(response.data)) {
         // Consolidar todos los aspectos y escalas únicos de todas las configuraciones
-        const aspectosMap = new Map<number, AspectoEnriquecido>();
-        const escalasMap = new Map<number, EscalaEnriquecida>();
+        // Usando clave compuesta: id-cfg_t_id para diferenciar por configuración
+        const aspectosMap = new Map<string, AspectoEnriquecido>();
+        const escalasMap = new Map<string, EscalaEnriquecida>();
 
         response.data.forEach((config) => {
           const tipoEvalNombre = config.tipo_evaluacion?.tipo?.nombre || 'Sin tipo';
           const categoriaNombre = config.tipo_evaluacion?.categoria?.nombre || '';
           const tipoCompleto = categoriaNombre ? `${categoriaNombre} - ${tipoEvalNombre}` : tipoEvalNombre;
+          // Obtener el nombre del tipo de formulario desde cfg_t (tipo_form_id)
+          const tipoFormNombre = (config as any).tipo_form?.nombre || 'Sin nombre';
 
-          // Agregar aspectos únicos
+          // Agregar aspectos únicos (diferenciados por id + cfg_t_id)
           config.cfg_a
             .filter((a) => a.es_activo)
             .forEach((a) => {
-              if (!aspectosMap.has(a.id)) {
-                aspectosMap.set(a.id, {
+              const key = `${a.id}-${a.cfg_t_id}`;
+              if (!aspectosMap.has(key)) {
+                aspectosMap.set(key, {
                   id: a.id,
                   nombre: a.aspecto.nombre,
                   descripcion: a.aspecto.descripcion,
                   cfg_t_id: a.cfg_t_id,
                   tipo_evaluacion: tipoCompleto,
+                  tipo_form_nombre: tipoFormNombre,
                   es_configuracion_actual: a.cfg_t_id === cfgTId,
                 });
               }
             });
 
-          // Agregar escalas únicas
+          // Agregar escalas únicas (diferenciadas por id + cfg_t_id)
           config.cfg_e
             .filter((e) => e.es_activo)
             .forEach((e) => {
-              if (!escalasMap.has(e.id)) {
-                escalasMap.set(e.id, {
+              const key = `${e.id}-${e.cfg_t_id}`;
+              if (!escalasMap.has(key)) {
+                escalasMap.set(key, {
                   id: e.id,
                   sigla: e.escala.sigla,
                   nombre: e.escala.nombre,
                   descripcion: e.escala.descripcion,
                   cfg_t_id: e.cfg_t_id,
                   tipo_evaluacion: tipoCompleto,
+                  tipo_form_nombre: tipoFormNombre,
                   puntaje: e.puntaje,
                   es_configuracion_actual: e.cfg_t_id === cfgTId,
                 });
@@ -189,16 +207,18 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
 
         // Expandir automáticamente la configuración actual
         const tiposUnicos = new Set<string>();
-        aspectosCfg.forEach(a => tiposUnicos.add(a.tipo_evaluacion));
-        escalasCfg.forEach(e => tiposUnicos.add(e.tipo_evaluacion));
+        aspectosCfg.forEach(a => tiposUnicos.add(`${a.tipo_evaluacion}|CFG_${a.cfg_t_id}`));
+        escalasCfg.forEach(e => tiposUnicos.add(`${e.tipo_evaluacion}|CFG_${e.cfg_t_id}`));
         
         const aspectosExp: Record<string, boolean> = {};
         const escalasExp: Record<string, boolean> = {};
-        tiposUnicos.forEach(tipo => {
-          const esActual = aspectosCfg.some(a => a.tipo_evaluacion === tipo && a.es_configuracion_actual) ||
-                          escalasCfg.some(e => e.tipo_evaluacion === tipo && e.es_configuracion_actual);
-          aspectosExp[tipo] = esActual;
-          escalasExp[tipo] = esActual;
+        tiposUnicos.forEach(key => {
+          const [tipoEval, cfgPart] = key.split('|');
+          const cfgId = parseInt(cfgPart.replace('CFG_', ''));
+          const esActual = aspectosCfg.some(a => a.cfg_t_id === cfgId && a.es_configuracion_actual) ||
+                          escalasCfg.some(e => e.cfg_t_id === cfgId && e.es_configuracion_actual);
+          aspectosExp[key] = esActual;
+          escalasExp[key] = esActual;
         });
         
         setAspectosExpandidos(aspectosExp);
@@ -221,17 +241,19 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
   }, [isOpen, cfgTId]);
 
   const aspectosById = useMemo(
-    () => new Map(aspectosConfigurados.map((a) => [a.id, a])),
+    () => new Map(aspectosConfigurados.map((a) => [`${a.id}-${a.cfg_t_id}`, a])),
     [aspectosConfigurados]
   );
 
   const aspectosPorTipo = useMemo(() => {
     const grupos: Record<string, AspectoEnriquecido[]> = {};
     aspectosConfigurados.forEach((aspecto) => {
-      if (!grupos[aspecto.tipo_evaluacion]) {
-        grupos[aspecto.tipo_evaluacion] = [];
+      // Agrupar por tipo_evaluacion + cfg_t_id para diferenciar configuraciones
+      const key = `${aspecto.tipo_evaluacion}|CFG_${aspecto.cfg_t_id}`;
+      if (!grupos[key]) {
+        grupos[key] = [];
       }
-      grupos[aspecto.tipo_evaluacion].push(aspecto);
+      grupos[key].push(aspecto);
     });
     return grupos;
   }, [aspectosConfigurados]);
@@ -239,10 +261,12 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
   const escalasPorTipo = useMemo(() => {
     const grupos: Record<string, EscalaEnriquecida[]> = {};
     escalasConfiguradas.forEach((escala) => {
-      if (!grupos[escala.tipo_evaluacion]) {
-        grupos[escala.tipo_evaluacion] = [];
+      // Agrupar por tipo_evaluacion + cfg_t_id para diferenciar configuraciones
+      const key = `${escala.tipo_evaluacion}|CFG_${escala.cfg_t_id}`;
+      if (!grupos[key]) {
+        grupos[key] = [];
       }
-      grupos[escala.tipo_evaluacion].push(escala);
+      grupos[key].push(escala);
     });
     return grupos;
   }, [escalasConfiguradas]);
@@ -251,7 +275,7 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
     setItems((prev) => prev.map((it) => (it.id === itemId ? { ...it, ...updates } : it)));
   };
 
-  const updateAspecto = (itemId: string, aspectoId: number, updates: Partial<AspectoState>) => {
+  const updateAspecto = (itemId: string, aspectoId: number, cfgTId: number, updates: Partial<AspectoState>) => {
     setItems((prev) =>
       prev.map((it) => {
         if (it.id !== itemId) return it;
@@ -262,30 +286,31 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
         return {
           ...it,
           aspectos: it.aspectos.map((a) =>
-            a.id === aspectoId ? { ...a, ...finalUpdates } : a
+            a.id === aspectoId && a.cfg_t_id === cfgTId ? { ...a, ...finalUpdates } : a
           ),
         };
       })
     );
   };
 
-  const toggleEscala = (itemId: string, escalaId: number) => {
+  const toggleEscala = (itemId: string, escalaId: number, cfgTId: number) => {
     setItems((prev) =>
       prev.map((it) => {
         if (it.id !== itemId) return it;
-        const exists = it.escalaIds.includes(escalaId);
         return {
           ...it,
-          escalaIds: exists
-            ? it.escalaIds.filter((id) => id !== escalaId)
-            : [...it.escalaIds, escalaId],
+          escalas: it.escalas.map((e) =>
+            e.id === escalaId && e.cfg_t_id === cfgTId
+              ? { ...e, selected: !e.selected }
+              : e
+          ),
         };
       })
     );
   };
 
   const addItem = () => {
-    setItems((prev) => [...prev, createItem(aspectosConfigurados)]);
+    setItems((prev) => [...prev, createItem(aspectosConfigurados, escalasConfiguradas)]);
   };
 
   const toggleTipoSeleccion = (tipo: 'conEscalas' | 'sinEscalas') => {
@@ -307,10 +332,11 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
     // Crear bloques para cada tipo seleccionado
     const nuevosItems: AeItemState[] = [];
     tiposSeleccionados.forEach(tipo => {
-      const item = createItem(aspectosConfigurados);
+      const item = createItem(aspectosConfigurados, escalasConfiguradas);
       item.tipoConfiguracion = tipo;
       item.es_pregunta_abierta = tipo === 'sinEscalas';
       item.aspectos = createAspectosState(aspectosConfigurados, tipo === 'sinEscalas');
+      item.escalas = createEscalasState(escalasConfiguradas);
       item.currentStep = 2; // Avanzar al paso 2
       nuevosItems.push(item);
     });
@@ -337,7 +363,7 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
       }
     }
     if (step === 2 && item.tipoConfiguracion === 'conEscalas') {
-      if (item.escalaIds.length === 0) {
+      if (item.escalas.filter(e => e.selected).length === 0) {
         setError("Debes seleccionar al menos una escala");
         return false;
       }
@@ -404,7 +430,7 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
         setError("No hay escalas configuradas para preguntas cerradas");
         return false;
       }
-      if (item.tipoConfiguracion === 'conEscalas' && item.escalaIds.length === 0) {
+      if (item.tipoConfiguracion === 'conEscalas' && item.escalas.filter(e => e.selected).length === 0) {
         setError("Las preguntas cerradas deben tener al menos una escala");
         return false;
       }
@@ -424,7 +450,7 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
           es_pregunta_abierta: item.es_pregunta_abierta,
           escalas: item.es_pregunta_abierta
             ? [{ id: null, es_cmt: true, es_cmt_oblig: item.escalaOpen.es_cmt_oblig }]
-            : item.escalaIds,
+            : item.escalas.filter(e => e.selected).map(e => e.id),
           aspectos: item.aspectos
             .filter((a) => a.selected)
             .map((a) => ({
@@ -443,7 +469,7 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
           title: "Configuración guardada",
           description: response.data?.message || "Bulk A/E procesado correctamente",
         });
-        onSuccess();
+        await Promise.resolve(onSuccess());
         onClose();
       } else {
         throw new Error("No se pudo guardar la configuración");
@@ -460,25 +486,48 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center gap-4 pb-4 border-b">
-            <div className="p-3 bg-gradient-to-br from-primary to-primary/70 rounded-xl shadow-lg">
-              <Settings className="h-6 w-6 text-primary-foreground" />
-            </div>
-            <div className="flex-1">
-              <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                Componer Aspectos y Escalas
-              </DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1.5">
-                ⚙️ Configura paso a paso cómo se evaluarán los aspectos
-              </p>
-            </div>
-          </div>
-        </DialogHeader>
-
-        {isLoadingConfig ? (
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Componer Aspectos y Escalas"
+      description="Configura paso a paso cómo se evaluarán los aspectos"
+      icon={Settings}
+      size="full"
+      closeOnOverlayClick={!isLoading && !isLoadingConfig}
+      showCloseButton={!isLoading && !isLoadingConfig}
+      footer={
+        <div className="flex w-full gap-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={isLoading || isLoadingConfig}
+            className="flex-1 h-12 rounded-2xl border-2 border-slate-200 text-sm font-semibold hover:bg-slate-50 transition-all"
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isLoading || isLoadingConfig || !allItemsCompleted()}
+            className="flex-1 h-12 rounded-2xl bg-slate-900 text-sm font-semibold text-white shadow-xl shadow-slate-200 hover:bg-slate-800 active:scale-95 transition-all"
+          >
+            {isLoading ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
+                Guardando...
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-4 w-4" />
+                Guardar configuración
+              </>
+            )}
+          </Button>
+        </div>
+      }
+    >
+      {isLoadingConfig ? (
           <div className="flex flex-col items-center justify-center gap-4 py-12">
             <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
             <p className="text-sm text-muted-foreground">Cargando configuración...</p>
@@ -635,25 +684,30 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
                     {/* PASO 2: Escalas (solo para con escalas) */}
                     {item.currentStep === 2 && item.tipoConfiguracion === 'conEscalas' && (
                       <div className="space-y-4">
-                        {Object.entries(escalasPorTipo).map(([tipo, escalasGrupo]) => {
+                        {Object.entries(escalasPorTipo).map(([key, escalasGrupo]) => {
+                          const [tipoEval, cfgPart] = key.split('|');
+                          const cfgId = cfgPart.replace('CFG_', '');
+                          const tipoFormNombre = escalasGrupo[0]?.tipo_form_nombre || 'Tipo';
                           const esActual = escalasGrupo[0]?.es_configuracion_actual;
                           return (
                             <Collapsible
-                              key={tipo}
-                              open={escalasExpandidas[tipo]}
-                              onOpenChange={(open) => setEscalasExpandidas(prev => ({ ...prev, [tipo]: open }))}
+                              key={key}
+                              open={escalasExpandidas[key]}
+                              onOpenChange={(open) => setEscalasExpandidas(prev => ({ ...prev, [key]: open }))}
                             >
                               <Card className={`transition-all ${esActual ? 'border-primary/50 shadow-sm bg-primary/5' : 'border-muted'}`}>
                                 <CollapsibleTrigger className="w-full">
                                   <div className="flex items-center justify-between p-4 hover:bg-primary/5 transition-all rounded-lg">
                                     <div className="flex items-center gap-3">
-                                      {escalasExpandidas[tipo] ? 
+                                      {escalasExpandidas[key] ? 
                                         <ChevronDown className="h-5 w-5 text-primary" /> : 
                                         <ChevronRight className="h-5 w-5" />
                                       }
                                       <div className="flex flex-col items-start gap-1">
                                         <div className="flex items-center gap-2">
-                                          <span className="font-semibold text-sm">{tipo}</span>
+                                          <span className="font-semibold text-sm">{tipoEval}</span>
+                                          <Badge variant="secondary" className="text-xs">{tipoFormNombre}</Badge>
+                                          <Badge variant="outline" className="text-xs font-mono">ID: {cfgId}</Badge>
                                           {esActual && <Badge variant="default" className="text-xs">Actual</Badge>}
                                         </div>
                                         <span className="text-xs text-muted-foreground">
@@ -662,7 +716,7 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
                                       </div>
                                     </div>
                                     {(() => {
-                                      const seleccionadas = escalasGrupo.filter(e => item.escalaIds.includes(e.id)).length;
+                                      const seleccionadas = escalasGrupo.filter(e => item.escalas.some(es => es.id === e.id && es.cfg_t_id === e.cfg_t_id && es.selected)).length;
                                       return seleccionadas > 0 ? (
                                         <Badge variant="default" className="gap-1">
                                           <CheckCircle2 className="h-3 w-3" />
@@ -675,10 +729,10 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
                                 <CollapsibleContent>
                                   <div className="p-4 pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-muted/20">
                                     {escalasGrupo.map((escala) => {
-                                      const isSelected = item.escalaIds.includes(escala.id);
+                                      const isSelected = item.escalas.some(e => e.id === escala.id && e.cfg_t_id === escala.cfg_t_id && e.selected);
                                       return (
                                         <label
-                                          key={escala.id}
+                                          key={`${escala.id}-${escala.cfg_t_id}`}
                                           className={`flex flex-col gap-2 rounded-lg border-2 p-4 cursor-pointer transition-all hover:shadow-md ${
                                             isSelected 
                                               ? 'border-primary bg-primary/10 shadow-sm' 
@@ -688,7 +742,7 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
                                           <div className="flex items-start gap-2">
                                             <Checkbox
                                               checked={isSelected}
-                                              onCheckedChange={() => toggleEscala(item.id, escala.id)}
+                                              onCheckedChange={() => toggleEscala(item.id, escala.id, escala.cfg_t_id)}
                                               className="mt-0.5"
                                             />
                                             <div className="flex-1">
@@ -720,27 +774,30 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
                     {/* PASO 2: Aspectos (solo para sin escalas) */}
                     {item.currentStep === 2 && item.tipoConfiguracion === 'sinEscalas' && (
                       <div className="space-y-4">
-                        {Object.entries(aspectosPorTipo).map(([tipo, aspectosGrupo]) => {
+                        {Object.entries(aspectosPorTipo).map(([key, aspectosGrupo]) => {
+                          const [tipoEval, cfgPart] = key.split('|');
+                          const cfgId = cfgPart.replace('CFG_', '');
                           const esActual = aspectosGrupo[0]?.es_configuracion_actual;
-                          const aspectosDelItem = item.aspectos.filter(a => aspectosGrupo.some(ag => ag.id === a.id));
+                          const aspectosDelItem = item.aspectos.filter(a => aspectosGrupo.some(ag => ag.id === a.id && ag.cfg_t_id === a.cfg_t_id));
                           
                           return (
                             <Collapsible
-                              key={tipo}
-                              open={aspectosExpandidos[tipo]}
-                              onOpenChange={(open) => setAspectosExpandidos(prev => ({ ...prev, [tipo]: open }))}
+                              key={key}
+                              open={aspectosExpandidos[key]}
+                              onOpenChange={(open) => setAspectosExpandidos(prev => ({ ...prev, [key]: open }))}
                             >
                               <Card className={`transition-all ${esActual ? 'border-primary/50 shadow-sm bg-primary/5' : 'border-muted'}`}>
                                 <CollapsibleTrigger className="w-full">
                                   <div className="flex items-center justify-between p-4 hover:bg-primary/5 transition-all rounded-lg">
                                     <div className="flex items-center gap-3">
-                                      {aspectosExpandidos[tipo] ? 
+                                      {aspectosExpandidos[key] ? 
                                         <ChevronDown className="h-5 w-5 text-primary" /> : 
                                         <ChevronRight className="h-5 w-5" />
                                       }
                                       <div className="flex flex-col items-start gap-1">
                                         <div className="flex items-center gap-2">
-                                          <span className="font-semibold text-sm">{tipo}</span>
+                                          <span className="font-semibold text-sm">{tipoEval}</span>
+                                          <Badge variant="outline" className="text-xs font-mono">ID: {cfgId}</Badge>
                                           {esActual && <Badge variant="default" className="text-xs">Actual</Badge>}
                                         </div>
                                         <span className="text-xs text-muted-foreground">
@@ -772,17 +829,17 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
                                         </TableHeader>
                                         <TableBody>
                                           {aspectosDelItem.map((asp) => {
-                                            const aspecto = aspectosById.get(asp.id);
+                                            const aspecto = aspectosById.get(`${asp.id}-${asp.cfg_t_id}`);
                                             return (
                                               <TableRow 
-                                                key={asp.id}
+                                                key={`${asp.id}-${asp.cfg_t_id}`}
                                                 className={asp.selected ? 'bg-primary/10 hover:bg-primary/15' : 'hover:bg-muted/50'}
                                               >
                                                 <TableCell>
                                                   <Checkbox
                                                     checked={asp.selected}
                                                     onCheckedChange={(value) =>
-                                                      updateAspecto(item.id, asp.id, {
+                                                      updateAspecto(item.id, asp.id, asp.cfg_t_id, {
                                                         selected: Boolean(value),
                                                       })
                                                     }
@@ -806,7 +863,7 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
                                                       checked={asp.es_cmt_oblig}
                                                       disabled={!asp.selected}
                                                       onCheckedChange={(value) =>
-                                                        updateAspecto(item.id, asp.id, {
+                                                        updateAspecto(item.id, asp.id, asp.cfg_t_id, {
                                                           es_cmt_oblig: Boolean(value),
                                                         })
                                                       }
@@ -834,27 +891,32 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
                     {/* PASO 3: Aspectos */}
                     {item.currentStep === 3 && item.tipoConfiguracion === 'conEscalas' && (
                       <div className="space-y-4">
-                        {Object.entries(aspectosPorTipo).map(([tipo, aspectosGrupo]) => {
+                        {Object.entries(aspectosPorTipo).map(([key, aspectosGrupo]) => {
+                          const [tipoEval, cfgPart] = key.split('|');
+                          const cfgId = cfgPart.replace('CFG_', '');
+                          const tipoFormNombre = aspectosGrupo[0]?.tipo_form_nombre || 'Tipo';
                           const esActual = aspectosGrupo[0]?.es_configuracion_actual;
-                          const aspectosDelItem = item.aspectos.filter(a => aspectosGrupo.some(ag => ag.id === a.id));
+                          const aspectosDelItem = item.aspectos.filter(a => aspectosGrupo.some(ag => ag.id === a.id && ag.cfg_t_id === a.cfg_t_id));
                           
                           return (
                             <Collapsible
-                              key={tipo}
-                              open={aspectosExpandidos[tipo]}
-                              onOpenChange={(open) => setAspectosExpandidos(prev => ({ ...prev, [tipo]: open }))}
+                              key={key}
+                              open={aspectosExpandidos[key]}
+                              onOpenChange={(open) => setAspectosExpandidos(prev => ({ ...prev, [key]: open }))}
                             >
                               <Card className={`transition-all ${esActual ? 'border-primary/50 shadow-sm bg-primary/5' : 'border-muted'}`}>
                                 <CollapsibleTrigger className="w-full">
                                   <div className="flex items-center justify-between p-4 hover:bg-primary/5 transition-all rounded-lg">
                                     <div className="flex items-center gap-3">
-                                      {aspectosExpandidos[tipo] ? 
+                                      {aspectosExpandidos[key] ? 
                                         <ChevronDown className="h-5 w-5 text-primary" /> : 
                                         <ChevronRight className="h-5 w-5" />
                                       }
                                       <div className="flex flex-col items-start gap-1">
                                         <div className="flex items-center gap-2">
-                                          <span className="font-semibold text-sm">{tipo}</span>
+                                          <span className="font-semibold text-sm">{tipoEval}</span>
+                                          <Badge variant="secondary" className="text-xs">{tipoFormNombre}</Badge>
+                                          <Badge variant="outline" className="text-xs font-mono">ID: {cfgId}</Badge>
                                           {esActual && <Badge variant="default" className="text-xs">Actual</Badge>}
                                         </div>
                                         <span className="text-xs text-muted-foreground">
@@ -894,17 +956,17 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
                                         </TableHeader>
                                         <TableBody>
                                           {aspectosDelItem.map((asp) => {
-                                            const aspecto = aspectosById.get(asp.id);
+                                            const aspecto = aspectosById.get(`${asp.id}-${asp.cfg_t_id}`);
                                             return (
                                               <TableRow 
-                                                key={asp.id}
+                                                key={`${asp.id}-${asp.cfg_t_id}`}
                                                 className={asp.selected ? 'bg-primary/10 hover:bg-primary/15' : 'hover:bg-muted/50'}
                                               >
                                                 <TableCell>
                                                   <Checkbox
                                                     checked={asp.selected}
                                                     onCheckedChange={(value) =>
-                                                      updateAspecto(item.id, asp.id, {
+                                                      updateAspecto(item.id, asp.id, asp.cfg_t_id, {
                                                         selected: Boolean(value),
                                                       })
                                                     }
@@ -930,7 +992,7 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
                                                           checked={asp.es_cmt}
                                                           disabled={!asp.selected}
                                                           onCheckedChange={(value) =>
-                                                            updateAspecto(item.id, asp.id, {
+                                                            updateAspecto(item.id, asp.id, asp.cfg_t_id, {
                                                               es_cmt: Boolean(value),
                                                               es_cmt_oblig: Boolean(value) && asp.es_cmt_oblig,
                                                             })
@@ -947,7 +1009,7 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
                                                           checked={asp.es_cmt_oblig}
                                                           disabled={!asp.selected || !asp.es_cmt}
                                                           onCheckedChange={(value) =>
-                                                            updateAspecto(item.id, asp.id, {
+                                                            updateAspecto(item.id, asp.id, asp.cfg_t_id, {
                                                               es_cmt_oblig: Boolean(value),
                                                               es_cmt: true,
                                                             })
@@ -967,7 +1029,7 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
                                                         checked={asp.es_cmt_oblig}
                                                         disabled={!asp.selected}
                                                         onCheckedChange={(value) =>
-                                                          updateAspecto(item.id, asp.id, {
+                                                          updateAspecto(item.id, asp.id, asp.cfg_t_id, {
                                                             es_cmt_oblig: Boolean(value),
                                                           })
                                                         }
@@ -1004,11 +1066,11 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
                           <div className="space-y-2 text-sm">
                             <div className="flex items-center gap-2">
                               <Badge variant="default" className="text-xs">
-                                {item.escalaIds.length} escala{item.escalaIds.length !== 1 ? 's' : ''}
+                                {item.escalas.filter(e => e.selected).length} escala{item.escalas.filter(e => e.selected).length !== 1 ? 's' : ''}
                               </Badge>
                               <span className="text-muted-foreground">
                                 {escalasConfiguradas
-                                  .filter(e => item.escalaIds.includes(e.id))
+                                  .filter(e => item.escalas.some(es => es.id === e.id && es.cfg_t_id === e.cfg_t_id && es.selected))
                                   .map(e => e.sigla)
                                   .join(", ")}
                               </span>
@@ -1093,29 +1155,6 @@ export function ModalAe({ isOpen, onClose, onSuccess, cfgTId, aspectos, escalas 
           </div>
         )}
 
-        <DialogFooter className="flex flex-col-reverse sm:flex-row gap-3 pt-4 border-t">
-          <Button type="button" variant="outline" onClick={onClose} disabled={isLoading || isLoadingConfig}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={isLoading || isLoadingConfig || !allItemsCompleted()}
-            className="gap-2"
-          >
-            {isLoading ? (
-              <>
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
-                Guardando...
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="h-4 w-4" />
-                Guardar configuración
-              </>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </BaseModal>
   );
 }

@@ -1,15 +1,8 @@
 import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter
-} from "@/components/ui/dialog"
+import { FormModal } from "@/components/modals"
 import {
   Tabs,
   TabsContent,
@@ -24,7 +17,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Tag, Edit3, Plus, AlertCircle, Check, Database } from "lucide-react"
 import { type Aspecto } from "@/src/api"
 import { aspectosEvaluacionService, categoriaAspectoMapService } from "@/src/api"
@@ -36,7 +28,7 @@ interface ModalAspectoProps {
   onClose: () => void
   aspecto?: Aspecto
   categoryId?: number
-  onSuccess: () => void
+  onSuccess: () => void | Promise<void>
   onAspectoCreated?: (aspecto: Aspecto) => void
   onAspectoUpdated?: (aspecto: Aspecto) => void
 }
@@ -201,7 +193,8 @@ export function ModalAspecto({
         }
       }
 
-      onSuccess()
+      // Esperar a que onSuccess se complete (si es una promesa) antes de cerrar
+      await Promise.resolve(onSuccess())
       onClose()
     } catch (error) {
       toast({
@@ -235,36 +228,24 @@ export function ModalAspecto({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader className="text-center sm:text-left">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              {aspecto ? (
-                <Edit3 className="h-5 w-5 text-primary" />
-              ) : (
-                <Plus className="h-5 w-5 text-primary" />
-              )}
-            </div>
-            <div className="flex-1">
-              <DialogTitle className="text-xl font-semibold">
-                {aspecto ? "Editar Aspecto de Evaluación" : "Nuevo Aspecto de Evaluación"}
-              </DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                {aspecto 
-                  ? "Modifica la información del aspecto de evaluación"
-                  : "Crea un nuevo aspecto para evaluar en las inspecciones"
-                }
-              </p>
-            </div>
-          </div>
-        </DialogHeader>
-
+    <FormModal
+      isOpen={isOpen}
+      onClose={onClose}
+      onSubmit={handleSubmit}
+      mode={aspecto ? "edit" : "create"}
+      title={aspecto ? "Editar Aspecto de Evaluación" : "Nuevo Aspecto de Evaluación"}
+      icon={aspecto ? Edit3 : Plus}
+      size="2xl"
+      isLoading={isLoading}
+      loadingText={aspecto ? "Actualizando..." : "Guardando..."}
+      submitText={aspecto ? "Actualizar" : "Guardar"}
+      disableSubmit={!aspecto && tabActiva === "banco" && !aspectoSeleccionado}
+    >
         <Card className="border-0 shadow-none bg-muted/20">
           <CardContent className="p-5">
             {aspecto ? (
               // Modo edición - solo una pestaña
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-6">
                 {/* Campo Nombre */}
                 <div className="space-y-3">
                   <Label htmlFor="nombre" className="text-sm font-medium flex items-center gap-2">
@@ -318,7 +299,7 @@ export function ModalAspecto({
                     </div>
                   </div>
                 </div>
-              </form>
+              </div>
             ) : (
               // Modo creación - dos pestañas
               <Tabs value={tabActiva} onValueChange={(v) => setTabActiva(v as "crear" | "banco")}>
@@ -335,7 +316,7 @@ export function ModalAspecto({
 
                 {/* Pestaña: Crear desde Cero */}
                 <TabsContent value="crear" className="space-y-6">
-                  <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="space-y-6">
                     {/* Campo Nombre */}
                     <div className="space-y-3">
                       <Label htmlFor="nombre" className="text-sm font-medium flex items-center gap-2">
@@ -389,7 +370,7 @@ export function ModalAspecto({
                         </div>
                       </div>
                     </div>
-                  </form>
+                  </div>
                 </TabsContent>
 
                 {/* Pestaña: Del Banco */}
@@ -443,37 +424,6 @@ export function ModalAspecto({
             )}
           </CardContent>
         </Card>
-
-        <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-0 pt-2">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={onClose}
-            className="w-full sm:w-auto"
-            disabled={isLoading}
-          >
-            Cancelar
-          </Button>
-          <Button 
-            type="submit" 
-            onClick={handleSubmit}
-            className="w-full sm:w-auto"
-            disabled={isLoading || (!aspecto && tabActiva === "banco" && !aspectoSeleccionado)}
-          >
-            {isLoading ? (
-              <div className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                {aspecto ? "Actualizando..." : "Guardando..."}
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                {aspecto ? <Edit3 className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                {aspecto ? "Actualizar" : "Guardar"}
-              </div>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </FormModal>
   )
 }

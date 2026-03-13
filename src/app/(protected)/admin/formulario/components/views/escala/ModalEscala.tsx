@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { FormModal } from "@/components/modals"
 import {
   Tabs,
   TabsContent,
@@ -18,7 +17,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Hash, Edit3, Plus, AlertCircle, Star, Check, Database } from "lucide-react"
 import { type Escala } from "@/src/api"
 import { escalasValoracionService, categoriaEscalaMapService } from "@/src/api"
@@ -30,7 +28,7 @@ interface ModalEscalaProps {
   onClose: () => void
   escala?: Escala
   categoryId?: number
-  onSuccess: () => void
+  onSuccess: () => void | Promise<void>
   onEscalaCreated?: (escala: Escala) => void
   onEscalaUpdated?: (escala: Escala) => void
 }
@@ -203,7 +201,8 @@ export function ModalEscala({ isOpen, onClose, escala, categoryId, onSuccess, on
         }
       }
 
-      onSuccess()
+      // Esperar a que onSuccess se complete (si es una promesa) antes de cerrar
+      await Promise.resolve(onSuccess())
       onClose()
     } catch (error) {
       toast({
@@ -238,36 +237,24 @@ export function ModalEscala({ isOpen, onClose, escala, categoryId, onSuccess, on
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader className="text-center sm:text-left">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              {escala ? (
-                <Edit3 className="h-5 w-5 text-primary" />
-              ) : (
-                <Plus className="h-5 w-5 text-primary" />
-              )}
-            </div>
-            <div className="flex-1">
-              <DialogTitle className="text-xl font-semibold">
-                {escala ? "Editar Escala de Valoración" : "Nueva Escala de Valoración"}
-              </DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                {escala 
-                  ? "Modifica la información de la escala de valoración"
-                  : "Crea una nueva escala para calificar las evaluaciones"
-                }
-              </p>
-            </div>
-          </div>
-        </DialogHeader>
-
+    <FormModal
+      isOpen={isOpen}
+      onClose={onClose}
+      onSubmit={handleSubmit}
+      mode={escala ? "edit" : "create"}
+      title={escala ? "Editar Escala de Valoración" : "Nueva Escala de Valoración"}
+      icon={escala ? Edit3 : Plus}
+      size="2xl"
+      isLoading={isLoading}
+      loadingText={escala ? "Actualizando..." : "Guardando..."}
+      submitText={escala ? "Actualizar" : "Guardar"}
+      disableSubmit={!escala && tabActiva === "banco" && !escalaSeleccionada}
+    >
         <Card className="border-0 shadow-none bg-muted/20">
           <CardContent className="p-5">
             {escala ? (
               // Modo edición - solo una pestaña
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-6">
                 {/* Campo Sigla */}
                 <div className="space-y-3">
                   <Label htmlFor="sigla" className="text-sm font-medium flex items-center gap-2">
@@ -344,7 +331,7 @@ export function ModalEscala({ isOpen, onClose, escala, categoryId, onSuccess, on
                     </div>
                   </div>
                 </div>
-              </form>
+              </div>
             ) : (
               // Modo creación - dos pestañas
               <Tabs value={tabActiva} onValueChange={(v) => setTabActiva(v as "crear" | "banco")}>
@@ -361,7 +348,7 @@ export function ModalEscala({ isOpen, onClose, escala, categoryId, onSuccess, on
 
                 {/* Pestaña: Crear desde Cero */}
                 <TabsContent value="crear" className="space-y-6">
-                  <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="space-y-6">
                     {/* Campo Sigla */}
                     <div className="space-y-3">
                       <Label htmlFor="sigla" className="text-sm font-medium flex items-center gap-2">
@@ -438,7 +425,7 @@ export function ModalEscala({ isOpen, onClose, escala, categoryId, onSuccess, on
                         </div>
                       </div>
                     </div>
-                  </form>
+                  </div>
                 </TabsContent>
 
                 {/* Pestaña: Del Banco */}
@@ -492,37 +479,6 @@ export function ModalEscala({ isOpen, onClose, escala, categoryId, onSuccess, on
             )}
           </CardContent>
         </Card>
-
-        <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-0 pt-2">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={onClose}
-            className="w-full sm:w-auto"
-            disabled={isLoading}
-          >
-            Cancelar
-          </Button>
-          <Button 
-            type="submit" 
-            onClick={handleSubmit}
-            className="w-full sm:w-auto"
-            disabled={isLoading || (!escala && tabActiva === "banco" && !escalaSeleccionada)}
-          >
-            {isLoading ? (
-              <div className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                {escala ? "Actualizando..." : "Guardando..."}
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                {escala ? <Edit3 className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                {escala ? "Actualizar" : "Guardar"}
-              </div>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </FormModal>
   )
 }

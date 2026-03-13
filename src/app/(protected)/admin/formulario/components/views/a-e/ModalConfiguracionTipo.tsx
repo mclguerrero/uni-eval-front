@@ -1,15 +1,8 @@
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { FormModal } from "@/components/modals";
 import {
   Select,
   SelectContent,
@@ -37,7 +30,7 @@ import {
 interface ModalConfiguracionTipoProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (config: ConfiguracionTipo) => void;
+  onSuccess: (config: ConfiguracionTipo) => void | Promise<void>;
   configuracion?: ConfiguracionTipo;
 }
 
@@ -74,8 +67,8 @@ export function ModalConfiguracionTipo({
     // Limpiar formulario
     if (configuracion) {
       setFormData({
-        tipo_id: configuracion.tipo_id,
-        tipo_form_id: configuracion.tipo_form_id,
+        tipo_id: configuracion.tipo_id ?? 0,
+        tipo_form_id: configuracion.tipo_form_id ?? 1,
         fecha_inicio: configuracion.fecha_inicio?.split('T')[0] || "",
         fecha_fin: configuracion.fecha_fin?.split('T')[0] || "",
         es_cmt_gen: configuracion.es_cmt_gen ?? true,
@@ -217,7 +210,7 @@ export function ModalConfiguracionTipo({
           title: configuracion ? "Configuración actualizada" : "Configuración creada",
           description: `La configuración fue ${configuracion ? 'actualizada' : 'creada'} correctamente`,
         });
-        onSuccess(response.data);
+        await Promise.resolve(onSuccess(response.data));
         onClose();
       } else {
         throw new Error("No se pudo guardar la configuración");
@@ -234,25 +227,22 @@ export function ModalConfiguracionTipo({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Settings className="h-5 w-5 text-primary" />
-            </div>
-            <div className="flex-1">
-              <DialogTitle className="text-xl font-semibold">
-                {configuracion ? "Editar" : "Nueva"} Configuración de Evaluación
-              </DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Configura el tipo de evaluación, fechas y opciones generales
-              </p>
-            </div>
-          </div>
-        </DialogHeader>
-
-        <Card className="border shadow-none bg-muted/20">
+    <FormModal
+      isOpen={isOpen}
+      onClose={onClose}
+      onSubmit={async (e) => {
+        e.preventDefault();
+        await handleSubmit();
+      }}
+      mode={configuracion ? "edit" : "create"}
+      title={`${configuracion ? "Editar" : "Nueva"} Configuración de Evaluación`}
+      icon={Settings}
+      size="xl"
+      isLoading={isLoading}
+      loadingText="Guardando..."
+      submitText={configuracion ? "Actualizar" : "Crear"}
+    >
+      <Card className="border shadow-none bg-muted/20">
           <CardContent className="p-4 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="categoria">Categoría de Tipo</Label>
@@ -273,7 +263,7 @@ export function ModalConfiguracionTipo({
             <div className="space-y-2">
               <Label htmlFor="tipo_id">Tipo de Evaluación/Encuesta *</Label>
               <Select
-                value={formData.tipo_id.toString()}
+                value={formData.tipo_id ? formData.tipo_id.toString() : ""}
                 onValueChange={(value) =>
                   setFormData({ ...formData, tipo_id: parseInt(value) })
                 }
@@ -320,7 +310,7 @@ export function ModalConfiguracionTipo({
             <div className="space-y-3 pt-2 border-t">
               <h4 className="text-sm font-medium">Tipo de formulario</h4>
               <Select
-                value={formData.tipo_form_id.toString()}
+                value={formData.tipo_form_id ? formData.tipo_form_id.toString() : ""}
                 onValueChange={(value) =>
                   setFormData({ ...formData, tipo_form_id: parseInt(value) })
                 }
@@ -402,15 +392,6 @@ export function ModalConfiguracionTipo({
           </CardContent>
         </Card>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isLoading}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSubmit} disabled={isLoading}>
-            {isLoading ? "Guardando..." : configuracion ? "Actualizar" : "Crear"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </FormModal>
   );
 }

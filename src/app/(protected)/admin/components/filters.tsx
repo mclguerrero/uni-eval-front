@@ -1,10 +1,10 @@
 "use client"
 import { useState, useEffect, useCallback } from "react"
+import type { ComponentType } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Separator } from "@/components/ui/separator"
 import {
   Select,
   SelectContent,
@@ -18,12 +18,6 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import {
   SlidersHorizontal,
   X,
   ChevronDown,
@@ -33,38 +27,23 @@ import {
   BookOpen,
   Users,
   Settings2,
-  Loader2,
   Info,
   RotateCcw,
 } from "lucide-react"
 import { configuracionEvaluacionService } from "@/src/api"
 import { filterService } from "@/src/api/services/filter/filter.service"
 import type { ConfiguracionTipo } from "@/src/api/services/app/cfg-t.service"
+import type { ApiResponse, FiltrosState } from "../types"
 
 // ============================================================================
 // Types
 // ============================================================================
-
-interface FiltrosState {
-  configuracionSeleccionada: number | null
-  semestreSeleccionado: string
-  periodoSeleccionado: string
-  programaSeleccionado: string
-  grupoSeleccionado: string
-  sedeSeleccionada: string
-}
 
 interface FiltrosProps {
   filtros: FiltrosState
   onFiltrosChange: (filtros: FiltrosState) => void
   onLimpiarFiltros: () => void
   loading?: boolean
-}
-
-interface ApiResponse<T> {
-  success?: boolean
-  data?: T | { data: T }
-  message?: string
 }
 
 // ============================================================================
@@ -154,30 +133,42 @@ const obtenerPeriodoMasReciente = (periodos: string[]): string | null => {
 // Sub-components
 // ============================================================================
 
-function FilterChip({
+function ActiveFilterChip({
   label,
   value,
+  removable = true,
   onRemove,
 }: {
   label: string
   value: string
-  onRemove: () => void
+  removable?: boolean
+  onRemove?: () => void
 }) {
   return (
     <Badge
-      variant="secondary"
-      className="pl-2.5 pr-1 py-1 gap-1.5 text-xs font-medium bg-foreground/5 text-foreground border-border hover:bg-foreground/10 transition-colors"
+      variant="outline"
+      className="h-7 gap-1.5 rounded-full border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700"
     >
-      <span className="text-muted-foreground">{label}:</span>
-      <span className="max-w-[120px] truncate">{value}</span>
-      <button
-        onClick={onRemove}
-        className="ml-0.5 rounded-full p-0.5 hover:bg-foreground/10 transition-colors"
-        aria-label={`Remover filtro ${label}`}
-      >
-        <X className="h-3 w-3" />
-      </button>
+      <span className="text-slate-500">{label}:</span>
+      <span className="max-w-[150px] truncate text-slate-800">{value}</span>
+      {removable && onRemove && (
+        <button
+          onClick={onRemove}
+          className="rounded-full p-0.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+          aria-label={`Remover filtro ${label}`}
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
     </Badge>
+  )
+}
+
+function FlowSteps() {
+  return (
+    <p className="mb-3 text-[11px] text-slate-500">
+      Período → Sede → Programa → Semestre → Grupo
+    </p>
   )
 }
 
@@ -187,33 +178,28 @@ function FilterField({
   value,
   placeholder,
   options,
-  disabled,
-  isLoading,
   onChange,
 }: {
-  icon: React.ElementType
+  icon: ComponentType<{ className?: string }>
   label: string
   value: string
   placeholder: string
   options: string[]
-  disabled?: boolean
-  isLoading?: boolean
   onChange: (value: string) => void
 }) {
   return (
-    <div className="space-y-1.5">
-      <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-        <Icon className="h-3.5 w-3.5" />
+    <div className="space-y-1">
+      <label className="flex items-center gap-1 text-[11px] font-medium text-slate-600">
+        <Icon className="h-3 w-3" />
         {label}
-        {isLoading && <Loader2 className="h-3 w-3 animate-spin" />}
       </label>
-      <Select value={value || undefined} onValueChange={onChange} disabled={disabled}>
-        <SelectTrigger className="h-9 text-sm bg-card border-border">
+      <Select value={value || undefined} onValueChange={onChange}>
+        <SelectTrigger className="h-8 border-slate-200 bg-white text-xs transition-colors hover:border-slate-300 focus-visible:ring-slate-300">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="border-slate-200">
           {options.map((option) => (
-            <SelectItem key={option} value={option}>
+            <SelectItem key={option} value={option} className="text-xs">
               {option}
             </SelectItem>
           ))}
@@ -240,7 +226,6 @@ export default function Filtros({
   const [semestres, setSemestres] = useState<string[]>([])
   const [grupos, setGrupos] = useState<string[]>([])
   const [loadingData, setLoadingData] = useState(true)
-  const [loadingOpciones, setLoadingOpciones] = useState(false)
   const [configOpen, setConfigOpen] = useState(false)
 
   // Cargar datos iniciales
@@ -288,7 +273,7 @@ export default function Filtros({
           }
         }
 
-        if (hasChanges) {
+        if (hasChanges && mounted) {
           onFiltrosChange(nuevosFiltros)
         }
 
@@ -305,16 +290,14 @@ export default function Filtros({
     return () => {
       mounted = false
     }
-  }, [])
+  }, [onFiltrosChange, filtros.configuracionSeleccionada, filtros.periodoSeleccionado])
 
-  // Cargar opciones dinámicas
+  // Cargar opciones dinámicas (sedes y programas)
   useEffect(() => {
     let mounted = true
 
-    const cargarOpcionesFiltros = async () => {
+    const cargarOpcionesSedes = async () => {
       try {
-        setLoadingOpciones(true)
-
         // Cargar sedes
         const sedesResponse = await filterService.getSedes().catch((err) => {
           logger.error('Filtros', 'Error cargando sedes', err)
@@ -325,26 +308,47 @@ export default function Filtros({
           setSedes(sedesData)
           
           // Seleccionar automáticamente la primera sede si no hay ninguna seleccionada
-          if (!filtros.sedeSeleccionada && sedesData.length > 0) {
+          // y hay período seleccionado (cascada)
+          if (!filtros.sedeSeleccionada && sedesData.length > 0 && filtros.periodoSeleccionado) {
             onFiltrosChange({ ...filtros, sedeSeleccionada: sedesData[0] })
           }
         }
 
-        // Cargar programas
-        if (filtros.sedeSeleccionada) {
+        // Cargar programas si hay sede seleccionada
+        if (filtros.sedeSeleccionada && filtros.periodoSeleccionado) {
           const programasResponse = await filterService.getProgramas(
             filtros.sedeSeleccionada,
-            filtros.periodoSeleccionado || undefined,
+            filtros.periodoSeleccionado,
           ).catch((err) => {
             logger.error('Filtros', 'Error cargando programas', err)
             return []
           })
-          if (mounted) setProgramas(normalizeApiResponse<string>(programasResponse))
+          const programasData = normalizeApiResponse<string>(programasResponse)
+          if (mounted) {
+            setProgramas(programasData)
+          }
         } else {
           if (mounted) setProgramas([])
         }
+      } finally {
+        // No necesitamos loading para sedes
+      }
+    }
 
-        // Cargar semestres
+    cargarOpcionesSedes()
+
+    return () => {
+      mounted = false
+    }
+  }, [filtros.sedeSeleccionada, filtros.periodoSeleccionado, filtros.programaSeleccionado, onFiltrosChange])
+
+  // Cargar semestres y grupos
+  useEffect(() => {
+    let mounted = true
+
+    const cargarOpcionesSemestresGrupos = async () => {
+      try {
+        // Cargar semestres si hay programa seleccionado
         if (filtros.programaSeleccionado) {
           const semestresResponse = await filterService.getSemestres(
             filtros.sedeSeleccionada || undefined,
@@ -354,12 +358,15 @@ export default function Filtros({
             logger.error('Filtros', 'Error cargando semestres', err)
             return []
           })
-          if (mounted) setSemestres(normalizeApiResponse<string>(semestresResponse))
+          const semestresData = normalizeApiResponse<string>(semestresResponse)
+          if (mounted) {
+            setSemestres(semestresData)
+          }
         } else {
           if (mounted) setSemestres([])
         }
 
-        // Cargar grupos
+        // Cargar grupos si hay semestre seleccionado
         if (filtros.semestreSeleccionado) {
           const gruposResponse = await filterService.getGrupos(
             filtros.sedeSeleccionada || undefined,
@@ -370,21 +377,24 @@ export default function Filtros({
             logger.error('Filtros', 'Error cargando grupos', err)
             return []
           })
-          if (mounted) setGrupos(normalizeApiResponse<string>(gruposResponse))
+          const gruposData = normalizeApiResponse<string>(gruposResponse)
+          if (mounted) {
+            setGrupos(gruposData)
+          }
         } else {
           if (mounted) setGrupos([])
         }
       } finally {
-        if (mounted) setLoadingOpciones(false)
+        // No necesitamos loading
       }
     }
 
-    cargarOpcionesFiltros()
+    cargarOpcionesSemestresGrupos()
 
     return () => {
       mounted = false
     }
-  }, [filtros.sedeSeleccionada, filtros.periodoSeleccionado, filtros.programaSeleccionado, filtros.semestreSeleccionado])
+  }, [filtros.programaSeleccionado, filtros.semestreSeleccionado, filtros.sedeSeleccionada, filtros.periodoSeleccionado, onFiltrosChange])
 
   // Handlers
   const handleFiltroChange = useCallback(
@@ -425,130 +435,50 @@ export default function Filtros({
   // Loading skeleton
   if (loadingData) {
     return (
-      <Card className="rounded-[2.5rem] border-2 border-slate-100 shadow-md bg-white overflow-hidden">
-        <CardHeader className="pb-6 border-b border-slate-50 bg-slate-50/50">
-          <div className="flex items-center gap-4">
-            <Skeleton className="h-12 w-12 rounded-2xl bg-slate-100" />
-            <div className="space-y-2">
-              <Skeleton className="h-6 w-48" />
-              <Skeleton className="h-4 w-64" />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-            <div className="space-y-3">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-10 w-full rounded-xl" />
-            </div>
-            <div className="space-y-3">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-10 w-full rounded-xl" />
-            </div>
-          </div>
-          <Separator className="mb-8" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="space-y-3">
-                <Skeleton className="h-4 w-20" />
-                <Skeleton className="h-10 w-full rounded-xl" />
+      <Card className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <CardContent className="p-3">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            {[1, 2].map((i) => (
+              <div key={i} className="space-y-1.5 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                <Skeleton className="h-3 w-16 rounded" />
+                <Skeleton className="h-8 w-full rounded-md" />
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
-    );
+    )
   }
 
   return (
-    <TooltipProvider>
-      <Card className="rounded-[2.5rem] border-2 border-slate-100 shadow-sm bg-white hover:shadow-md transition-all duration-500 overflow-hidden">
-        {/* Header bar */}
-        <CardHeader className="flex flex-row items-center justify-between px-8 py-5 border-b border-slate-50 bg-slate-50/50 space-y-0">
-          <div className="flex items-center gap-4">
-            <div className="h-10 w-10 rounded-xl bg-white shadow-sm border border-slate-200 flex items-center justify-center">
-              <SlidersHorizontal className="h-5 w-5 text-slate-600" />
-            </div>
-            <div>
-              <CardTitle className="text-lg font-bold text-slate-800">
-                Filtros Inteligentes
-              </CardTitle>
-              <CardDescription className="text-xs font-medium text-slate-500">
-                Refina la arquitectura de datos institucional
-              </CardDescription>
-            </div>
-            {filtrosActivos > 0 && (
-              <Badge
-                variant="default"
-                className="h-6 min-w-6 px-2 text-[10px] font-black rounded-full bg-blue-600 shadow-md shadow-blue-200"
-              >
-                {filtrosActivos}
-              </Badge>
-            )}
+    <Card className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <CardHeader className="space-y-0 border-b border-slate-100 px-4 py-2.5 md:px-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <SlidersHorizontal className="h-4 w-4 text-slate-600" />
+            <h2 className="text-sm font-semibold text-slate-900">Filtros</h2>
           </div>
-          <div className="flex items-center gap-3">
-            {filtrosActivos > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onLimpiarFiltros}
-                disabled={loading}
-                className="h-9 px-4 text-[10px] font-black uppercase tracking-widest text-slate-500 bg-white hover:text-rose-600 hover:bg-rose-50 border-slate-200 rounded-xl transition-all"
-              >
-                <RotateCcw className="h-3.5 w-3.5 mr-2" />
-                Resetear Dashboard
-              </Button>
-            )}
-          </div>
-        </CardHeader>
+          {filtrosActivos > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onLimpiarFiltros}
+              disabled={loading}
+              className="h-7 px-2 text-xs text-slate-500 hover:text-slate-700"
+            >
+              <RotateCcw className="mr-1 h-3 w-3" />
+              Limpiar
+            </Button>
+          )}
+        </div>
+      </CardHeader>
 
-        {/* Active filter chips */}
-        {filtrosActivos > 0 && (
-          <div className="flex items-center gap-3 px-8 py-3 bg-blue-50/30 border-b border-slate-50 flex-wrap">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400 mr-2">
-              Segmentación Activa:
-            </span>
-            {filtros.sedeSeleccionada && (
-              <FilterChip
-                label="Sede"
-                value={filtros.sedeSeleccionada}
-                onRemove={() => handleFiltroChange('sedeSeleccionada', '')}
-              />
-            )}
-            {filtros.programaSeleccionado && (
-              <FilterChip
-                label="Programa"
-                value={filtros.programaSeleccionado}
-                onRemove={() => handleFiltroChange('programaSeleccionado', '')}
-              />
-            )}
-            {filtros.semestreSeleccionado && (
-              <FilterChip
-                label="Semestre"
-                value={filtros.semestreSeleccionado}
-                onRemove={() => handleFiltroChange('semestreSeleccionado', '')}
-              />
-            )}
-            {filtros.grupoSeleccionado && (
-              <FilterChip
-                label="Grupo"
-                value={filtros.grupoSeleccionado}
-                onRemove={() => handleFiltroChange('grupoSeleccionado', '')}
-              />
-            )}
-          </div>
-        )}
-
-        {/* Filter fields */}
-        <CardContent className="p-8">
-          {/* Required row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
-            <div className="space-y-1.5">
-              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                <Settings2 className="h-3.5 w-3.5" />
-                Configuración
-                <span className="text-destructive">*</span>
-              </label>
+      <CardContent className="space-y-2.5 p-4">
+        {/* Configuración y Período */}
+        <div className="space-y-1.5">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-[11px] font-medium text-slate-600">Config.</label>
               <Select
                 value={
                   filtros.configuracionSeleccionada
@@ -560,19 +490,15 @@ export default function Filtros({
                 }
                 disabled={loading}
               >
-                <SelectTrigger className="h-9 text-sm bg-card border-border">
-                  <SelectValue placeholder="Selecciona configuración" />
+                <SelectTrigger className="h-8 border-slate-200 bg-white text-xs transition-colors hover:border-slate-300">
+                  <SelectValue placeholder="Selecciona" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="border-slate-200">
                   {configuraciones.map((config) => (
                     <SelectItem key={config.id} value={String(config.id)}>
-                      <span className="flex items-center gap-2">
-                        {config.tipo_evaluacion?.tipo?.nombre || `Tipo ${config.tipo_id}`}
-                        {" - "}
-                        {config.tipo_evaluacion?.categoria?.nombre || ""}
-                        {config.es_activo && (
-                          <span className="inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
-                        )}
+                      <span className="text-xs">
+                        {config.tipo_evaluacion?.tipo?.nombre}{" "}
+                        {config.es_activo && "✓"}
                       </span>
                     </SelectItem>
                   ))}
@@ -580,23 +506,19 @@ export default function Filtros({
               </Select>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                <Calendar className="h-3.5 w-3.5" />
-                Período
-                <span className="text-destructive">*</span>
-              </label>
+            <div className="space-y-1">
+              <label className="text-[11px] font-medium text-slate-600">Período</label>
               <Select
                 value={filtros.periodoSeleccionado || undefined}
                 onValueChange={(v) => handleFiltroChange('periodoSeleccionado', v)}
                 disabled={loading}
               >
-                <SelectTrigger className="h-9 text-sm bg-card border-border">
-                  <SelectValue placeholder="Selecciona período" />
+                <SelectTrigger className="h-8 border-slate-200 bg-white text-xs transition-colors hover:border-slate-300">
+                  <SelectValue placeholder="Selecciona" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="border-slate-200">
                   {periodos.map((periodo) => (
-                    <SelectItem key={periodo} value={periodo}>
+                    <SelectItem key={periodo} value={periodo} className="text-xs">
                       {periodo}
                     </SelectItem>
                   ))}
@@ -604,19 +526,17 @@ export default function Filtros({
               </Select>
             </div>
           </div>
+        </div>
 
-          <Separator className="mb-5" />
-
-          {/* Optional cascading filters */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Segmentación Académica */}
+        <div className="space-y-1.5">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <FilterField
               icon={MapPin}
               label="Sede"
               value={filtros.sedeSeleccionada}
-              placeholder="Todas las sedes"
+              placeholder="Todas"
               options={sedes}
-              disabled={loading || loadingOpciones}
-              isLoading={loadingOpciones}
               onChange={(v) => handleFiltroChange('sedeSeleccionada', v)}
             />
 
@@ -624,10 +544,8 @@ export default function Filtros({
               icon={GraduationCap}
               label="Programa"
               value={filtros.programaSeleccionado}
-              placeholder="Todos los programas"
+              placeholder="Todos"
               options={programas}
-              disabled={loading || loadingOpciones || !filtros.sedeSeleccionada}
-              isLoading={loadingOpciones && !!filtros.sedeSeleccionada}
               onChange={(v) => handleFiltroChange('programaSeleccionado', v)}
             />
 
@@ -637,8 +555,6 @@ export default function Filtros({
               value={filtros.semestreSeleccionado}
               placeholder="Todos"
               options={semestres}
-              disabled={loading || loadingOpciones || !filtros.programaSeleccionado}
-              isLoading={loadingOpciones && !!filtros.programaSeleccionado}
               onChange={(v) => handleFiltroChange('semestreSeleccionado', v)}
             />
 
@@ -648,76 +564,95 @@ export default function Filtros({
               value={filtros.grupoSeleccionado}
               placeholder="Todos"
               options={grupos}
-              disabled={loading || loadingOpciones || !filtros.semestreSeleccionado}
-              isLoading={loadingOpciones && !!filtros.semestreSeleccionado}
               onChange={(v) => handleFiltroChange('grupoSeleccionado', v)}
             />
           </div>
-        </CardContent>
+        </div>
 
-        {/* Configuration details collapsible */}
+        {/* Filtros Activos */}
+        {(filtros.sedeSeleccionada || filtros.programaSeleccionado || filtros.semestreSeleccionado || filtros.grupoSeleccionado) && (
+          <div className="flex flex-wrap gap-1.5 rounded-lg border border-slate-200/50 bg-slate-50 p-2">
+            {filtros.sedeSeleccionada && (
+              <Badge variant="outline" className="h-6 gap-1 rounded-full border-slate-300 bg-white px-2 text-[10px]">
+                {filtros.sedeSeleccionada}
+                <button
+                  onClick={() => handleFiltroChange('sedeSeleccionada', '')}
+                  className="ml-0.5"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              </Badge>
+            )}
+            {filtros.programaSeleccionado && (
+              <Badge variant="outline" className="h-6 gap-1 rounded-full border-slate-300 bg-white px-2 text-[10px]">
+                {filtros.programaSeleccionado}
+                <button
+                  onClick={() => handleFiltroChange('programaSeleccionado', '')}
+                  className="ml-0.5"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              </Badge>
+            )}
+            {filtros.semestreSeleccionado && (
+              <Badge variant="outline" className="h-6 gap-1 rounded-full border-slate-300 bg-white px-2 text-[10px]">
+                {filtros.semestreSeleccionado}
+                <button
+                  onClick={() => handleFiltroChange('semestreSeleccionado', '')}
+                  className="ml-0.5"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              </Badge>
+            )}
+            {filtros.grupoSeleccionado && (
+              <Badge variant="outline" className="h-6 gap-1 rounded-full border-slate-300 bg-white px-2 text-[10px]">
+                {filtros.grupoSeleccionado}
+                <button
+                  onClick={() => handleFiltroChange('grupoSeleccionado', '')}
+                  className="ml-0.5"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              </Badge>
+            )}
+          </div>
+        )}
+
+        {/* Detalle de Configuración */}
         {configuracionSeleccionada && (
           <Collapsible open={configOpen} onOpenChange={setConfigOpen}>
             <CollapsibleTrigger asChild>
-              <button className="flex items-center justify-between w-full px-5 py-3 border-t border-border text-sm hover:bg-muted/50 transition-colors group">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Info className="h-3.5 w-3.5" />
-                  <span className="font-medium text-foreground">
-                    Detalle de configuración
-                  </span>
-                  <Badge
-                    variant="outline"
-                    className={`text-[10px] px-1.5 py-0 h-4 ${
-                      configuracionSeleccionada!.es_activo
-                        ? "border-green-500/30 text-green-700 bg-green-50"
-                        : "border-border text-muted-foreground"
-                    }`}
-                  >
-                    {configuracionSeleccionada!.es_activo ? "Activa" : "Inactiva"}
-                  </Badge>
-                </div>
+              <button className="group flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-1.5 text-xs transition-colors hover:bg-slate-50">
+                <span className="font-medium text-slate-700">Detalles</span>
                 <ChevronDown
-                  className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+                  className={`h-3 w-3 text-slate-500 transition-transform ${
                     configOpen ? "rotate-180" : ""
                   }`}
                 />
               </button>
             </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="px-5 pb-4 pt-1">
-                <div className="rounded-md border border-border bg-muted/30 p-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-                        Tipo
-                      </p>
-                      <p className="text-sm font-medium text-foreground">
-                        {configuracionSeleccionada!.tipo_evaluacion.tipo.nombre}
-                        {" - "}
-                        {configuracionSeleccionada!.tipo_evaluacion.categoria.nombre}
+            <CollapsibleContent className="mt-2">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs">
+                <div className="space-y-1.5">
+                  <div>
+                    <p className="text-[10px] text-slate-500">Tipo</p>
+                    <p className="font-medium text-slate-800">
+                      {configuracionSeleccionada.tipo_evaluacion.tipo.nombre}
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <div>
+                      <p className="text-[10px] text-slate-500">Inicio</p>
+                      <p className="font-medium text-slate-800">
+                        {formatearFecha(configuracionSeleccionada.fecha_inicio)}
                       </p>
                     </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-                        Fecha inicio
+                    <div>
+                      <p className="text-[10px] text-slate-500">Fin</p>
+                      <p className="font-medium text-slate-800">
+                        {formatearFecha(configuracionSeleccionada.fecha_fin)}
                       </p>
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                        <p className="text-sm font-medium text-foreground">
-                          {formatearFecha(configuracionSeleccionada!.fecha_inicio)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-                        Fecha fin
-                      </p>
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                        <p className="text-sm font-medium text-foreground">
-                          {formatearFecha(configuracionSeleccionada!.fecha_fin)}
-                        </p>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -725,7 +660,7 @@ export default function Filtros({
             </CollapsibleContent>
           </Collapsible>
         )}
-      </Card>
-    </TooltipProvider>
+      </CardContent>
+    </Card>
   )
 }

@@ -24,15 +24,7 @@ import DocentesList from "./components/DocentesList"
 import DocentesCumplimientoBarChart from "./components/DocentesCumplimientoBarChart"
 import { metricService } from "@/src/api/services/metric/metric.service"
 import type { DocenteGeneralMetrics } from "@/src/api/services/metric/metric.service"
-
-interface FiltrosState {
-  configuracionSeleccionada: number | null
-  semestreSeleccionado: string
-  periodoSeleccionado: string
-  programaSeleccionado: string
-  grupoSeleccionado: string
-  sedeSeleccionada: string
-}
+import type { FiltrosState } from "../types"
 
 const logger = {
   debug: (module: string, message: string, data?: unknown) => {
@@ -144,19 +136,19 @@ export default function DocenteAdminPage() {
     <div className="min-h-screen bg-slate-50/50">
       {/* Header Premium */}
       <header className="sticky top-0 z-40 bg-white/80 border-b border-slate-100 shadow-sm backdrop-blur-xl">
-        <div className="w-full mx-auto px-8 h-20 flex justify-between items-center">
+        <div className="mx-auto h-20 w-full max-w-[1680px] px-6 lg:px-8 xl:px-10 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center border border-indigo-100/50">
               <Users className="h-5 w-5 text-indigo-600" />
             </div>
             <div>
-              <h1 className="text-xl font-black text-slate-900 italic tracking-tight uppercase">Gestión Docente</h1>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Analítica Institucional</p>
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight">Gestión Docente</h1>
+              <p className="text-xs font-medium text-muted-foreground">Analítica Institucional</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-             <Badge variant="outline" className="px-3 py-1 bg-emerald-50/50 border-emerald-100 text-emerald-700 font-black text-[10px] uppercase tracking-widest gap-1.5 rounded-xl">
+             <Badge variant="outline" className="px-3 py-1 bg-emerald-50/50 border-emerald-100 text-emerald-700 font-medium text-xs gap-1.5 rounded-xl">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Sincronizado
             </Badge>
@@ -164,7 +156,7 @@ export default function DocenteAdminPage() {
         </div>
       </header>
 
-      <main className="w-full mx-auto p-10 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <main className="mx-auto w-full max-w-[1680px] px-6 py-10 lg:px-8 xl:px-10 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
         {/* Sección de Filtros */}
         <div className="relative group">
           <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 rounded-3xl blur opacity-0 group-hover:opacity-100 transition duration-1000"></div>
@@ -184,12 +176,12 @@ export default function DocenteAdminPage() {
             <div className="h-24 w-24 bg-white rounded-3xl flex items-center justify-center mx-auto mb-8 border border-slate-100 shadow-sm">
               <Settings2 className="h-12 w-12 text-slate-200" />
             </div>
-            <h2 className="text-2xl font-black text-slate-900 mb-4 italic tracking-tight uppercase">Configuración Necesaria</h2>
+            <h2 className="text-2xl font-bold text-slate-900 mb-4 tracking-tight">Configuración Necesaria</h2>
             <p className="text-slate-400 font-medium text-sm leading-relaxed mb-8 max-w-sm mx-auto">
               Para visualizar la arquitectura de datos docente, por favor seleccione un modelo de evaluación en el panel de filtros.
             </p>
             <div className="flex justify-center gap-4">
-              <div className="flex items-center gap-2 text-[10px] font-black text-slate-200 uppercase tracking-widest">
+              <div className="flex items-center gap-2 text-xs font-medium text-slate-200">
                 <div className="h-1.5 w-1.5 rounded-full bg-indigo-500/50 animate-pulse"></div>
                 Esperando Input
               </div>
@@ -254,7 +246,7 @@ export default function DocenteAdminPage() {
                       <TrendingUp className="h-6 w-6 text-indigo-600" />
                     </div>
                     <div>
-                      <CardTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 uppercase italic">Mapa de Cumplimiento Estratégico</CardTitle>
+                      <CardTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700">Mapa de Cumplimiento Estratégico</CardTitle>
                       <CardDescription className="text-slate-500 text-sm font-medium">Analítica avanzada de participación y calidad académica</CardDescription>
                     </div>
                   </div>

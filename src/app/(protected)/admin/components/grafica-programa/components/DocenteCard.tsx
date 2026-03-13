@@ -38,41 +38,41 @@ export const DocenteCard: React.FC<DocenteCardProps> = ({
 
   return (
     <div
-      className={`p-4 rounded-xl border transition-all hover:shadow-md bg-gradient-to-r ${estadoInfo.bgGradient} cursor-pointer group`}
+      className={`p-6 rounded-[2rem] border-2 border-slate-100 transition-all duration-300 hover:shadow-xl hover:border-indigo-100 bg-gradient-to-r ${estadoInfo.bgGradient} group`}
     >
       {/* Información general del docente */}
-      <div className="flex items-start justify-between mb-3">
+      <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <Badge className={`${estadoInfo.color} border`}>
+          <div className="flex items-center gap-2 mb-3">
+            <Badge className={`${estadoInfo.color} border rounded-xl font-medium text-xs px-3 py-1`}>
               <IconComponent className="h-4 w-4" />
               <span className="ml-1.5">{estadoInfo.label}</span>
             </Badge>
           </div>
-          <h3 className="text-lg font-bold text-gray-900 mb-1 tracking-tight">
+          <h3 className="text-xl font-bold text-slate-900 mb-1 tracking-tight group-hover:text-indigo-600 transition-colors">
             {docente.nombre_docente || docente.docente}
           </h3>
-          <div className="flex items-center gap-4 text-sm text-gray-600">
-            <span className="flex items-center gap-1">
+          <div className="flex items-center gap-4 text-sm text-slate-500">
+            <span className="flex items-center gap-1.5">
               <Users className="h-4 w-4" />
               {realizados}/{esperados} evaluaciones
             </span>
-            <span className="font-medium text-gray-700">{porcentaje}% completado</span>
+            <span className="font-medium text-slate-700">{porcentaje}% completado</span>
           </div>
         </div>
 
         {/* Promedio */}
         <div className="text-right">
-          <p className={`text-3xl font-bold ${getPromedioColor(promedio)}`}>
+          <p className={`text-4xl font-bold tracking-tight ${getPromedioColor(promedio)}`}>
             {promedio.toFixed(2)}
           </p>
-          <p className="text-sm text-gray-500">/5.0</p>
+          <p className="text-xs font-medium text-slate-400">/5.0</p>
         </div>
       </div>
 
       {/* Barra de progreso */}
-      <div className="mb-3">
-        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+      <div className="mb-5">
+        <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-50">
           <div
             className={`h-full transition-all ${
               promedio >= 4.0
@@ -89,10 +89,10 @@ export const DocenteCard: React.FC<DocenteCardProps> = ({
       </div>
 
       {/* Botones de acción */}
-      <div className="flex gap-2">
+      <div className="flex gap-3">
         <button
           onClick={() => onOpenMateriasModal(docente)}
-          className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+          className="flex-1 flex items-center justify-center gap-2 h-11 px-4 text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-[1rem] border border-indigo-100 transition-all"
         >
           <Book className="h-4 w-4" />
           Ver Materias

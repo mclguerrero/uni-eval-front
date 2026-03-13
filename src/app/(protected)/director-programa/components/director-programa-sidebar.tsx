@@ -17,6 +17,12 @@ const directorProgramaMenuItems: SidebarMenuItem[] = [
     description: "Materias asignadas"
   },
   {
+    href: "/director-programa/eval/bienvenida",
+    icon: FileText,
+    label: "Mis Evaluaciones",
+    description: "Evaluaciones asignadas"
+  },
+  {
     href: "/director-programa/docente",
     icon: Users,
     label: "Docentes",

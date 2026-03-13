@@ -5,16 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { RankingItem, DocenteGeneralMetrics } from "@/src/api/services/metric/metric.service";
-import MateriasModal from "../docente/components/MateriasModal";
-
-interface FiltrosState {
-  configuracionSeleccionada: number | null;
-  semestreSeleccionado: string;
-  periodoSeleccionado: string;
-  programaSeleccionado: string;
-  grupoSeleccionado: string;
-  sedeSeleccionada: string;
-}
+import MateriasModal from "./MateriasModal";
+import type { FiltrosState } from "../types";
 
 interface RankingDocentesProps {
   docentes: RankingItem[];

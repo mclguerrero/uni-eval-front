@@ -5,25 +5,25 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { authService, configuracionEvaluacionService, evalService } from "@/src/api"
+import { configuracionEvaluacionService, evalService } from "@/src/api"
 import { Progress } from "@/components/ui/progress"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/src/api/core/auth/useAuth"
-import type { ConfiguracionTipo, EvalByUserItem, EvalGeneradaItem, UserProfile } from "@/src/api";
+import type { ConfiguracionTipo, EvalByUserItem, EvalGeneradaItem } from "@/src/api";
 import { FileText, AlertCircle } from "lucide-react"
 import { ModalEvaluacionesCreadas } from "../components/ModalEvaluacionesCreadas"
 import EvaluacionCard from "../components/CfgEvaluacionCard"
 import Image from "next/image"
+import { getEvalBasePath } from "../utils/route-base"
 
-export default function EstudianteBienvenida() {
+export default function DocenteEvaluacionesBienvenida() {
   const router = useRouter()
+  const pathname = usePathname()
   const { toast } = useToast()
-  const { user } = useAuth()
-  const [perfil, setPerfil] = useState<UserProfile | null>(null)
+  const { user, isLoading: authLoading } = useAuth()
+  const evalBasePath = getEvalBasePath(pathname)
   const [configuraciones, setConfiguraciones] = useState<ConfiguracionTipo[]>([])
   const [loading, setLoading] = useState(true)
-  const [profileLoading, setProfileLoading] = useState(true)
-  const [profileError, setProfileError] = useState<string | null>(null)
   const [currentTime, setCurrentTime] = useState(new Date())
   const [modalEvaluacionesOpen, setModalEvaluacionesOpen] = useState(false)
   const [evaluacionesCreadas, setEvaluacionesCreadas] = useState<EvalGeneradaItem[]>([]);
@@ -38,72 +38,6 @@ export default function EstudianteBienvenida() {
 
     return () => clearInterval(timer)
   }, [])
-
-  useEffect(() => {
-    const cargarPerfil = async () => {
-      try {
-        setProfileLoading(true);
-        setProfileError(null);
-        
-        // Verificar token primero
-        const token = authService.getToken();
-        if (!token) {
-          setProfileError("No hay sesión activa");
-          toast({
-            title: "Sesión no encontrada",
-            description: "Por favor, inicia sesión nuevamente",
-            variant: "destructive",
-          });
-          setTimeout(() => {
-            window.location.href = '/login';
-          }, 2000);
-          return;
-        }
-        
-        const response = await authService.getProfile();
-        
-        if (response.success && response.data) {
-          setPerfil(response.data as UserProfile);
-          setProfileError(null);
-        } else {
-          setProfileError("Perfil inválido");
-          toast({
-            title: "Perfil inválido",
-            description: "No se pudo validar el perfil del usuario",
-            variant: "destructive",
-          });
-          setTimeout(() => {
-            authService.logout();
-            window.location.href = '/login';
-          }, 2000);
-        }
-      } catch (error: any) {
-        console.error('Error al cargar perfil:', error);
-        
-        // Mostrar mensaje específico del error
-        const errorMessage = error?.message || "No se pudo cargar el perfil del estudiante";
-        setProfileError(errorMessage);
-        
-        toast({
-          title: "Error al cargar perfil",
-          description: errorMessage,
-          variant: "destructive",
-        });
-        
-        // Si es error de autenticación, redirigir al login
-        if (error?.status === 401 || error?.error === 'UNAUTHENTICATED') {
-          setTimeout(() => {
-            authService.logout();
-            window.location.href = '/login';
-          }, 2000);
-        }
-      } finally {
-        setProfileLoading(false);
-      }
-    };
-
-    cargarPerfil();
-  }, [toast])
 
   useEffect(() => {
     const cargarConfiguraciones = async () => {
@@ -193,14 +127,7 @@ export default function EstudianteBienvenida() {
   }
 
   const handleIniciarEvaluacion = async (configuracion: ConfiguracionTipo) => {
-    if (!perfil) {
-      toast({
-        title: "Error",
-        description: "No se pudo cargar el perfil del estudiante",
-        variant: "destructive",
-      })
-      return
-    }
+    if (!user) return;
 
     const configId = configuracion.id
 
@@ -225,11 +152,11 @@ export default function EstudianteBienvenida() {
         // Tipos 1 y 4 (Evaluación y Autoevaluación por Materia): Ir al dashboard
         // Tipos 2 y 3 (Encuesta y Autoevaluación): Ir directo a evaluar
         if (tipoFormId === 1 || tipoFormId === 4) {
-          router.push(`/docente/eval/dashboard/${configId}`)
+          router.push(`${evalBasePath}/dashboard/${configId}`)
         } else {
           const firstEvalId = evaluacionesExistentes[0]?.id
           const query = firstEvalId ? `?evalId=${firstEvalId}` : ""
-          router.push(`/docente/eval/evaluar/${configId}${query}`)
+          router.push(`${evalBasePath}/evaluar/${configId}${query}`)
         }
         return
       }
@@ -241,22 +168,30 @@ export default function EstudianteBienvenida() {
       await new Promise(resolve => setTimeout(resolve, 500))
 
       const response = await evalService.generar(configId)
+      const generatedItems = Array.isArray(response?.data)
+        ? response.data
+        : Array.isArray((response?.data as { data?: EvalGeneradaItem[] } | undefined)?.data)
+          ? ((response?.data as { data?: EvalGeneradaItem[] }).data ?? [])
+          : []
 
-      if (!response.success || response.data.length === 0) {
-        throw new Error(response.error?.message || "No se pudieron generar evaluaciones")
+      if (!response?.success || generatedItems.length === 0) {
+        throw new Error(response?.error?.message || "No se pudieron generar evaluaciones")
       }
 
-      setEvaluacionesCreadas(response.data)
+      setEvaluacionesCreadas(generatedItems)
 
       const evalsAfterResponse = await configuracionEvaluacionService.getEvaluacionesByCfgT(configId)
+      const evaluacionesActualizadas = Array.isArray(evalsAfterResponse?.data)
+        ? evalsAfterResponse.data
+        : []
       setEvaluacionesPorConfiguracion((prev) => ({
-        ...prev,
-        [configId]: evalsAfterResponse?.data || [],
+        ...(prev ?? {}),
+        [configId]: evaluacionesActualizadas,
       }))
 
       toast({
         title: "¡Evaluaciones creadas!",
-        description: `Se crearon ${response.data.length} evaluaciones correctamente.`,
+        description: `Se crearon ${generatedItems.length} evaluaciones correctamente.`,
         variant: "default",
       })
 
@@ -264,11 +199,11 @@ export default function EstudianteBienvenida() {
       
       // Tipos 2 y 3 (Encuesta y Autoevaluación): Redirigir directo a evaluar
       if (tipoFormId === 2 || tipoFormId === 3) {
-        const firstEvalId = evalsAfterResponse?.data?.[0]?.id
+        const firstEvalId = evaluacionesActualizadas[0]?.id
         const query = firstEvalId ? `?evalId=${firstEvalId}` : ""
         setIsCreatingEvaluaciones(false)
         setModalEvaluacionesOpen(false)
-        router.push(`/docente/eval/evaluar/${configId}${query}`)
+        router.push(`${evalBasePath}/evaluar/${configId}${query}`)
         return
       }
 
@@ -276,7 +211,7 @@ export default function EstudianteBienvenida() {
       await new Promise(resolve => setTimeout(resolve, 1200))
       setIsCreatingEvaluaciones(false)
       setModalEvaluacionesOpen(false)
-      router.push(`/docente/eval/dashboard/${configId}`)
+      router.push(`${evalBasePath}/dashboard/${configId}`)
     } catch (error) {
       console.error("❌ Error al generar evaluaciones:", error)
       setIsCreatingEvaluaciones(false)
@@ -290,41 +225,7 @@ export default function EstudianteBienvenida() {
     }
   }
 
-  if (profileError) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="max-w-md mx-auto shadow-lg">
-          <CardContent className="text-center py-12">
-            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <AlertCircle className="h-10 w-10 text-red-600" />
-            </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">Error de conexión</h3>
-            <p className="text-gray-600 mb-6">{profileError}</p>
-            <div className="space-y-3">
-              <Button 
-                onClick={() => window.location.reload()} 
-                className="w-full bg-gray-900 hover:bg-gray-800"
-              >
-                Reintentar
-              </Button>
-              <Button 
-                onClick={() => {
-                  authService.logout();
-                  window.location.href = '/login';
-                }} 
-                variant="outline"
-                className="w-full"
-              >
-                Volver al inicio de sesión
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  if (!perfil) {
+  if (authLoading || !user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

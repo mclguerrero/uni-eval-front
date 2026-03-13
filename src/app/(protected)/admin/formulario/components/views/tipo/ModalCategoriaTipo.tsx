@@ -1,16 +1,8 @@
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Card, CardContent } from "@/components/ui/card";
+import { FormModal } from "@/components/modals";
 import { FolderOpen, Edit3, Plus, AlertCircle } from "lucide-react";
 import { type CategoriaTipo } from "@/src/api";
 import { categoriaTipoService } from "@/src/api";
@@ -21,7 +13,7 @@ interface ModalCategoriaTipoProps {
   isOpen: boolean;
   onClose: () => void;
   categoria?: CategoriaTipo;
-  onSuccess: () => void;
+  onSuccess: () => void | Promise<void>;
   onCategoriaCreated?: (categoria: CategoriaTipo) => void;
   onCategoriaUpdated?: (categoria: CategoriaTipo) => void;
 }
@@ -113,7 +105,7 @@ export function ModalCategoriaTipo({
         }
       }
 
-      onSuccess();
+      await Promise.resolve(onSuccess());
       onClose();
     } catch (error) {
       toast({
@@ -136,136 +128,84 @@ export function ModalCategoriaTipo({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader className="text-center sm:text-left">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              {categoria ? (
-                <Edit3 className="h-5 w-5 text-primary" />
-              ) : (
-                <Plus className="h-5 w-5 text-primary" />
-              )}
-            </div>
-            <div className="flex-1">
-              <DialogTitle className="text-xl font-semibold">
-                {categoria ? "Editar Categoría" : "Nueva Categoría"}
-              </DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                {categoria 
-                  ? "Modifica la información de la categoría"
-                  : "Crea una nueva categoría para organizar tipos de evaluación"
-                }
-              </p>
-            </div>
+    <FormModal
+      isOpen={isOpen}
+      onClose={onClose}
+      onSubmit={handleSubmit}
+      mode={categoria ? "edit" : "create"}
+      title={categoria ? "Editar Categoría" : "Nueva Categoría"}
+      icon={FolderOpen}
+      isLoading={isLoading}
+      size="lg"
+    >
+      {/* Ejemplos sugeridos - Solo mostrar al crear nueva */}
+      {!categoria && (
+        <div className="bg-indigo-50/50 border-2 border-indigo-100 rounded-[2rem] p-6 mb-6">
+          <p className="text-sm font-semibold text-indigo-900 mb-3 flex items-center gap-2">
+            💡 Ejemplos de categorías:
+          </p>
+          <ul className="text-sm text-indigo-800 space-y-2 ml-4 list-disc">
+            <li><strong>Docente:</strong> Evaluaciones del desempeño y actividad pedagógica</li>
+            <li><strong>Encuesta de Satisfacción:</strong> Instrumentos de percepción y satisfacción</li>
+            <li><strong>Estudiantil:</strong> Evaluaciones relacionadas con el estudiante</li>
+            <li><strong>Institucional:</strong> Evaluaciones de procesos y servicios institucionales</li>
+          </ul>
+        </div>
+      )}
+
+      {/* Campo Nombre */}
+      <div className="space-y-3 mb-6">
+        <Label htmlFor="nombre" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+          <FolderOpen className="h-4 w-4 text-indigo-600" />
+          Nombre de la Categoría
+        </Label>
+        <Input
+          id="nombre"
+          value={formData.nombre}
+          onChange={(e) => handleInputChange("nombre", e.target.value)}
+          placeholder="Ej. Docente"
+          className={`h-12 rounded-2xl transition-all ${errors.nombre ? 'border-red-300 focus-visible:ring-red-500' : 'border-slate-200 focus-visible:ring-indigo-500'}`}
+          required
+        />
+        {errors.nombre && (
+          <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-xl border border-red-100">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            {errors.nombre}
           </div>
-        </DialogHeader>
+        )}
+      </div>
 
-        <Card className="border-0 shadow-none bg-muted/20">
-          <CardContent className="p-5">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Ejemplos sugeridos - Solo mostrar al crear nueva */}
-              {!categoria && (
-                <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
-                    💡 Ejemplos de categorías:
-                  </p>
-                  <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1 ml-4 list-disc">
-                    <li><strong>Docente:</strong> Evaluaciones del desempeño y actividad pedagógica</li>
-                    <li><strong>Encuesta de Satisfacción:</strong> Instrumentos de percepción y satisfacción</li>
-                    <li><strong>Estudiantil:</strong> Evaluaciones relacionadas con el estudiante</li>
-                    <li><strong>Institucional:</strong> Evaluaciones de procesos y servicios institucionales</li>
-                  </ul>
-                </div>
-              )}
-
-              {/* Campo Nombre */}
-              <div className="space-y-3">
-                <Label htmlFor="nombre" className="text-sm font-medium flex items-center gap-2">
-                  <FolderOpen className="h-4 w-4 text-primary" />
-                  Nombre de la Categoría
-                </Label>
-                <Input
-                  id="nombre"
-                  value={formData.nombre}
-                  onChange={(e) => handleInputChange("nombre", e.target.value)}
-                  placeholder="Ej. Docente"
-                  className={`transition-colors ${errors.nombre ? 'border-destructive focus-visible:ring-destructive' : ''}`}
-                  required
-                />
-                {errors.nombre && (
-                  <div className="flex items-center gap-1 text-sm text-destructive">
-                    <AlertCircle className="h-3 w-3" />
-                    {errors.nombre}
-                  </div>
-                )}
-              </div>
-
-              {/* Campo Descripción */}
-              <div className="space-y-3">
-                <Label htmlFor="descripcion" className="text-sm font-medium flex items-center gap-2">
-                  <Edit3 className="h-4 w-4 text-primary" />
-                  Descripción Detallada
-                </Label>
-                <Textarea
-                  id="descripcion"
-                  value={formData.descripcion}
-                  onChange={(e) => handleInputChange("descripcion", e.target.value)}
-                  placeholder="Describe el propósito de esta categoría. Ej: Evaluaciones asociadas al desempeño y actividad pedagógica del docente..."
-                  rows={4}
-                  className={`resize-none transition-colors ${errors.descripcion ? 'border-destructive focus-visible:ring-destructive' : ''}`}
-                  required
-                />
-                <div className="flex justify-between items-center">
-                  {errors.descripcion ? (
-                    <div className="flex items-center gap-1 text-sm text-destructive">
-                      <AlertCircle className="h-3 w-3" />
-                      {errors.descripcion}
-                    </div>
-                  ) : (
-                    <div className="text-xs text-muted-foreground">
-                      Mínimo 10 caracteres
-                    </div>
-                  )}
-                  <div className="text-xs text-muted-foreground">
-                    {formData.descripcion.length}/500
-                  </div>
-                </div>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-
-        <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-0 pt-2">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={onClose}
-            className="w-full sm:w-auto"
-            disabled={isLoading}
-          >
-            Cancelar
-          </Button>
-          <Button 
-            type="submit" 
-            onClick={handleSubmit}
-            className="w-full sm:w-auto"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <div className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                {categoria ? "Actualizando..." : "Creando..."}
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                {categoria ? <Edit3 className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                {categoria ? "Actualizar" : "Crear"}
-              </div>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      {/* Campo Descripción */}
+      <div className="space-y-3">
+        <Label htmlFor="descripcion" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+          <Edit3 className="h-4 w-4 text-indigo-600" />
+          Descripción Detallada
+        </Label>
+        <Textarea
+          id="descripcion"
+          value={formData.descripcion}
+          onChange={(e) => handleInputChange("descripcion", e.target.value)}
+          placeholder="Describe el propósito de esta categoría. Ej: Evaluaciones asociadas al desempeño y actividad pedagógica del docente..."
+          rows={4}
+          className={`resize-none rounded-2xl transition-all ${errors.descripcion ? 'border-red-300 focus-visible:ring-red-500' : 'border-slate-200 focus-visible:ring-indigo-500'}`}
+          required
+        />
+        <div className="flex justify-between items-center px-2">
+          {errors.descripcion ? (
+            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 px-3 py-1.5 rounded-xl border border-red-100">
+              <AlertCircle className="h-3 w-3 flex-shrink-0" />
+              {errors.descripcion}
+            </div>
+          ) : (
+            <div className="text-xs text-slate-400 font-medium">
+              Mínimo 10 caracteres
+            </div>
+          )}
+          <div className="text-xs text-slate-400 font-mono">
+            {formData.descripcion.length}/500
+          </div>
+        </div>
+      </div>
+    </FormModal>
   );
 }

@@ -24,6 +24,15 @@ export interface DataloginUser {
   role_name: string;
 }
 
+export interface AuthUserLookup extends DataloginUser {
+  rolesAuth?: Array<{ id: number; name: string }>;
+  rolesAuthIds?: number[];
+  rolesApp?: Array<{ id: number; name: string }>;
+  rolesAppIds?: number[];
+  roles?: string[];
+  rolesIds?: number[];
+}
+
 export interface LoginRequest {
   user_username: string;
   user_password: string;
@@ -142,10 +151,10 @@ export const authService = {
    * Obtener usuario por username
    * GET /auth/username/{username}
    */
-  getUserByUsername: async (username: string): Promise<ApiResponse<any>> => {
+  getUserByUsername: async (username: string): Promise<ApiResponse<AuthUserLookup>> => {
     try {
       logger.info('Obteniendo usuario por username', { username });
-      const response = await httpClient.getWithMeta<any>(`/auth/username/${username}`);
+      const response = await httpClient.getWithMeta<AuthUserLookup>(`/auth/username/${username}`);
       
       return {
         success: response.success || true,
@@ -155,7 +164,7 @@ export const authService = {
       logger.error('Error al obtener usuario por username', { username, error: error.message });
       return {
         success: false,
-        data: {} as any,
+        data: {} as AuthUserLookup,
         error,
       };
     }

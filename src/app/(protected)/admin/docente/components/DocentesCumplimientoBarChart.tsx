@@ -51,21 +51,21 @@ const CustomTooltip = ({ active, payload }: any) => {
   return (
     <div className="bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-2xl space-y-2">
       <div className="border-b border-slate-100 pb-2 mb-2">
-        <p className="font-black text-slate-800 italic uppercase text-xs">{data.name}</p>
+        <p className="font-semibold text-slate-800 text-xs">{data.name}</p>
         <p className="text-[10px] font-bold text-slate-400">ID: {data.id}</p>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Participación</p>
+          <p className="text-xs font-medium text-slate-400">Participación</p>
           <p className="text-sm font-black text-indigo-600">{data.x.toFixed(1)}%</p>
         </div>
         <div>
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Promedio</p>
+          <p className="text-xs font-medium text-slate-400">Promedio</p>
           <p className="text-sm font-black text-emerald-600">{data.y?.toFixed(2) || "N/A"}</p>
         </div>
       </div>
       <div className="pt-2 border-t border-slate-100">
-        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Evaluaciones Totales</p>
+        <p className="text-xs font-medium text-muted-foreground">Evaluaciones Totales</p>
         <p className="text-sm font-black text-slate-700">{data.z}</p>
       </div>
     </div>
@@ -151,7 +151,7 @@ export default function DocentesCumplimientoBarChart({
         <div className="w-20 h-20 rounded-[2rem] bg-indigo-50 flex items-center justify-center mb-6">
           <Target className="w-10 h-10 text-indigo-300" />
         </div>
-        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Seleccione una configuración para activar analítica</p>
+        <p className="text-slate-400 font-semibold text-xs">Seleccione una configuración para activar analítica</p>
       </div>
     )
   }
@@ -181,13 +181,13 @@ export default function DocentesCumplimientoBarChart({
             <Info className="w-6 h-6 text-white" />
           </div>
         </div>
-        <h3 className="text-2xl font-black text-slate-900 tracking-tight italic mb-3 uppercase">Analítica en Espera</h3>
-        <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-[10px] max-w-sm leading-relaxed px-6">
+        <h3 className="text-2xl font-bold text-slate-900 tracking-tight mb-3">Analítica en Espera</h3>
+        <p className="text-slate-400 font-medium text-xs max-w-sm leading-relaxed px-6">
           Datos insuficientes para analítica avanzada. Se requiere un umbral mínimo de actividad (evaluaciones realizadas) para proyectar la correlación entre participación y desempeño docente.
         </p>
         <div className="mt-12 flex items-center gap-3 bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100">
           <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Estado: Sincronizando flujo de datos</span>
+          <span className="text-xs font-medium text-slate-500">Estado: Sincronizando flujo de datos</span>
         </div>
       </div>
     )
@@ -204,8 +204,8 @@ export default function DocentesCumplimientoBarChart({
             <Target className="w-7 h-7" />
           </div>
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-2">Meta Cumplimiento</p>
-            <p className="text-2xl font-black text-slate-900 italic tracking-tight">{data.filter(d => d.x >= 80).length} <span className="text-xs font-bold text-slate-400 not-italic uppercase tracking-widest">Líderes</span></p>
+            <p className="text-xs font-medium text-muted-foreground leading-none mb-2">Meta Cumplimiento</p>
+            <p className="text-2xl font-bold text-slate-900 tracking-tight">{data.filter(d => d.x >= 80).length} <span className="text-xs font-normal text-slate-400">Líderes</span></p>
           </div>
         </div>
         <div className="p-8 rounded-[2rem] bg-emerald-50/20 border-2 border-emerald-100/50 flex items-center gap-5">
@@ -213,7 +213,7 @@ export default function DocentesCumplimientoBarChart({
             <TrendingUp className="w-7 h-7" />
           </div>
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-2">Calidad Promedio</p>
+            <p className="text-xs font-medium text-muted-foreground leading-none mb-2">Calidad Promedio</p>
             <p className="text-2xl font-black text-slate-900 italic tracking-tight">{avgQual}</p>
           </div>
         </div>
@@ -222,8 +222,8 @@ export default function DocentesCumplimientoBarChart({
             <Users className="w-7 h-7" />
           </div>
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-2">Población Activa</p>
-            <p className="text-2xl font-black text-slate-900 italic tracking-tight">{totalDocentes} <span className="text-xs font-bold text-slate-400 not-italic uppercase tracking-widest">Docentes</span></p>
+            <p className="text-xs font-medium text-muted-foreground leading-none mb-2">Población Activa</p>
+            <p className="text-2xl font-bold text-slate-900 tracking-tight">{totalDocentes} <span className="text-xs font-normal text-slate-400">Docentes</span></p>
           </div>
         </div>
       </div>
@@ -272,24 +272,24 @@ export default function DocentesCumplimientoBarChart({
         <div className="flex flex-wrap justify-center gap-6">
           <div className="flex items-center gap-2">
             <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200" />
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Excelencia</span>
+            <span className="text-xs font-medium text-slate-500">Excelencia</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3.5 h-3.5 rounded-full bg-blue-500 shadow-sm shadow-blue-200" />
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Óptimo</span>
+            <span className="text-xs font-medium text-slate-500">Óptimo</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3.5 h-3.5 rounded-full bg-amber-500 shadow-sm shadow-amber-200" />
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">En Mejora</span>
+            <span className="text-xs font-medium text-slate-500">En Mejora</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3.5 h-3.5 rounded-full bg-red-500 shadow-sm shadow-red-200" />
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Crítico</span>
+            <span className="text-xs font-medium text-slate-500">Crítico</span>
           </div>
         </div>
         <div className="flex items-center gap-3 bg-slate-50 px-5 py-3 rounded-2xl border border-slate-100 max-w-md">
           <Info className="w-4 h-4 text-slate-400 flex-shrink-0" />
-          <p className="text-[9px] font-bold text-slate-400 leading-relaxed uppercase tracking-tight">
+          <p className="text-xs font-normal text-slate-400 leading-relaxed">
             Análisis de densidad volumétrica: El área de cada nodo representa la carga académica total del docente.
           </p>
         </div>

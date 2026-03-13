@@ -201,7 +201,7 @@ function FilterField({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+      <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
         <Icon className="h-3.5 w-3.5" />
         {label}
         {isLoading && <Loader2 className="h-3 w-3 animate-spin" />}
@@ -496,7 +496,7 @@ export default function Filtros({
         {/* Active filter chips */}
         {filtrosActivos > 0 && (
           <div className="flex items-center gap-2 px-5 py-2.5 bg-muted/40 border-b border-border flex-wrap">
-            <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground mr-1">
+            <span className="text-xs font-medium text-muted-foreground mr-1">
               Activos
             </span>
             {filtros.sedeSeleccionada && (
@@ -535,7 +535,7 @@ export default function Filtros({
           {/* Required row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
             <div className="space-y-1.5">
-              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <Settings2 className="h-3.5 w-3.5" />
                 Configuración
                 <span className="text-destructive">*</span>
@@ -572,7 +572,7 @@ export default function Filtros({
             </div>
 
             <div className="space-y-1.5">
-              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <Calendar className="h-3.5 w-3.5" />
                 Período
                 <span className="text-destructive">*</span>
@@ -679,7 +679,7 @@ export default function Filtros({
                 <div className="rounded-md border border-border bg-muted/30 p-4">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-1">
-                      <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+                      <p className="text-xs font-medium text-muted-foreground">
                         Tipo
                       </p>
                       <p className="text-sm font-medium text-foreground">
@@ -689,7 +689,7 @@ export default function Filtros({
                       </p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+                      <p className="text-xs font-medium text-muted-foreground">
                         Fecha inicio
                       </p>
                       <div className="flex items-center gap-1.5">
@@ -700,7 +700,7 @@ export default function Filtros({
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+                      <p className="text-xs font-medium text-muted-foreground">
                         Fecha fin
                       </p>
                       <div className="flex items-center gap-1.5">

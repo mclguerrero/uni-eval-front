@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -13,6 +13,7 @@ import { configuracionEvaluacionService } from "@/src/api/services/app/cfg-t.ser
 import { evaluacionDetalleService } from "@/src/api/services/app/eval-det.service";
 import { ChevronDown, ChevronUp, ClipboardList, BookOpen, User, GraduationCap } from "lucide-react";
 import { motion } from "framer-motion";
+import { getEvalBasePath } from "../../utils/route-base";
 
 import type { ConfiguracionAspectosEscalasResponse } from "@/src/api/services/app/cfg-t.service";
 
@@ -55,8 +56,10 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
 export default function EvaluarDocentePage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const evalBasePath = getEvalBasePath(pathname);
 
   const [config, setConfig] = useState<ConfiguracionAspectosEscalasResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -231,9 +234,9 @@ export default function EvaluarDocentePage({ params }: { params: Promise<{ id: s
         toast({ title: "Evaluación enviada" });
         const tipoFormId = config.tipo_form?.id ?? config.tipo_form_id ?? 1;
         if (tipoFormId === 1) {
-          router.push(`/docente/eval/dashboard/${configId}`);
+          router.push(`${evalBasePath}/dashboard/${configId}`);
         } else {
-          router.push("/docente/eval/bienvenida");
+          router.push(`${evalBasePath}/bienvenida`);
         }
       } else {
         const details = Array.isArray(response.error?.details) ? response.error.details : [];

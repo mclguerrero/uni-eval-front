@@ -30,15 +30,7 @@ import type {
   MateriaMetric, 
   DocenteAspectosMetrics 
 } from "@/src/api/services/metric/metric.service"
-
-interface FiltrosState {
-  configuracionSeleccionada: number | null
-  semestreSeleccionado: string
-  periodoSeleccionado: string
-  programaSeleccionado: string
-  grupoSeleccionado: string
-  sedeSeleccionada: string
-}
+import type { FiltrosState } from "../../types"
 
 interface AspectoMetricsModalProps {
   docente: DocenteGeneralMetrics
@@ -156,12 +148,12 @@ export default function AspectoMetricsModal({
               </div>
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <h2 className="text-3xl font-black tracking-tight italic text-slate-900 uppercase">Métricas de Desempeño</h2>
-                  <Badge className="bg-blue-50 text-blue-600 border-blue-100 font-bold px-3 py-1 rounded-xl text-[10px] uppercase tracking-widest">
+                  <h2 className="text-3xl font-bold tracking-tight text-slate-900">Métricas de Desempeño</h2>
+                  <Badge className="bg-blue-50 text-blue-600 border-blue-100 font-medium px-3 py-1 rounded-xl text-xs">
                     Vista Detallada
                   </Badge>
                 </div>
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-slate-400 font-bold uppercase tracking-widest text-xs">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-slate-400 font-medium text-xs">
                   <div className="flex items-center gap-2">
                     <span className="text-slate-900 font-black italic">{materia.nombre_materia}</span>
                     {materia.grupo && (
@@ -200,7 +192,7 @@ export default function AspectoMetricsModal({
                   <Star className="w-6 h-6 text-slate-200" />
                 </div>
               </div>
-              <p className="mt-6 text-slate-500 font-bold uppercase tracking-widest text-xs">Cargando análisis profundo...</p>
+              <p className="mt-6 text-slate-500 font-medium text-xs">Cargando análisis profundo...</p>
             </div>
           ) : !metricsData ? (
             <div className="flex flex-col items-center justify-center py-20 text-slate-400">
@@ -214,10 +206,10 @@ export default function AspectoMetricsModal({
                 {/* Evaluación Estudiantes */}
                 <div className="p-6 rounded-3xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-shadow group">
                   <div className="flex items-center justify-between mb-4">
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Estudiantes</p>
+                    <p className="text-xs font-medium text-slate-400">Estudiantes</p>
                     <div className="text-right">
-                      <Badge className="bg-blue-50 text-blue-600 border-none font-bold">{(metricsData.evaluacion_estudiantes.peso * 100).toFixed(0)}% PESO</Badge>
-                      <p className="text-[9px] font-black text-blue-300 uppercase mt-1">Aporte: +{(metricsData.evaluacion_estudiantes.ponderado || 0).toFixed(2)}</p>
+                      <Badge className="bg-blue-50 text-blue-600 border-none font-bold">{(metricsData.evaluacion_estudiantes.peso * 100).toFixed(0)}% Peso</Badge>
+                      <p className="text-xs font-medium text-blue-300 mt-1">Aporte: +{(metricsData.evaluacion_estudiantes.ponderado || 0).toFixed(2)}</p>
                     </div>
                   </div>
                   <div className="flex items-baseline gap-2">
@@ -229,19 +221,19 @@ export default function AspectoMetricsModal({
                   <div className="mt-4 pt-4 border-t border-slate-50 flex items-center justify-between">
                     <div className="flex items-center gap-2 text-slate-500">
                       <Users className="w-4 h-4" />
-                      <span className="text-[10px] font-bold uppercase tracking-tight">{materia.total_realizadas} Evaluaciones</span>
+                      <span className="text-xs font-normal">{materia.total_realizadas} Evaluaciones</span>
                     </div>
-                    <span className="text-[9px] font-black text-slate-300 uppercase">{metricsData.evaluacion_estudiantes.total_respuestas} Ítems</span>
+                    <span className="text-xs font-normal text-slate-300">{metricsData.evaluacion_estudiantes.total_respuestas} Ítems</span>
                   </div>
                 </div>
 
                 {/* Autoevaluación Docente */}
                 <div className="p-6 rounded-3xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-shadow group">
                   <div className="flex items-center justify-between mb-4">
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Docente</p>
+                    <p className="text-xs font-medium text-slate-400">Docente</p>
                     <div className="text-right">
-                      <Badge className="bg-purple-50 text-purple-600 border-none font-bold">{(metricsData.autoevaluacion_docente.peso * 100).toFixed(0)}% PESO</Badge>
-                      <p className="text-[9px] font-black text-purple-300 uppercase mt-1">Aporte: +{(metricsData.autoevaluacion_docente.ponderado || 0).toFixed(2)}</p>
+                      <Badge className="bg-purple-50 text-purple-600 border-none font-bold">{(metricsData.autoevaluacion_docente.peso * 100).toFixed(0)}% Peso</Badge>
+                      <p className="text-xs font-medium text-purple-300 mt-1">Aporte: +{(metricsData.autoevaluacion_docente.ponderado || 0).toFixed(2)}</p>
                     </div>
                   </div>
                   <div className="flex items-baseline gap-2">
@@ -253,9 +245,9 @@ export default function AspectoMetricsModal({
                   <div className="mt-4 pt-4 border-t border-slate-50 flex items-center justify-between">
                     <div className="flex items-center gap-2 text-slate-500">
                       <UserCheck className="w-4 h-4" />
-                      <span className="text-[10px] font-bold uppercase tracking-tight">1 Autoevaluación</span>
+                      <span className="text-xs font-normal">1 Autoevaluación</span>
                     </div>
-                    <span className="text-[9px] font-black text-slate-300 uppercase">{metricsData.autoevaluacion_docente.total_respuestas} Ítems</span>
+                    <span className="text-xs font-normal text-slate-300">{metricsData.autoevaluacion_docente.total_respuestas} Ítems</span>
                   </div>
                 </div>
 
@@ -264,7 +256,7 @@ export default function AspectoMetricsModal({
                   <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform">
                     <TrendingUp className="w-24 h-24 text-white" />
                   </div>
-                  <p className="text-xs font-black text-white/50 uppercase tracking-widest mb-4">Puntaje Final</p>
+                  <p className="text-xs font-medium text-white/50 mb-4">Puntaje Final</p>
                   <div className="flex items-baseline gap-2">
                     <p className="text-5xl font-black text-white tracking-tighter">
                       {(metricsData.resultado_final.nota_final_ponderada || 0).toFixed(2)}
@@ -287,7 +279,7 @@ export default function AspectoMetricsModal({
                 {/* Radar Chart */}
                 <div className="p-8 pb-12 rounded-[2rem] bg-white border border-slate-100 shadow-sm flex flex-col items-center">
                   <div className="w-full flex justify-between items-center mb-10">
-                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-blue-500"></span>
                       Equilibrio de Competencias
                     </h3>
@@ -333,7 +325,7 @@ export default function AspectoMetricsModal({
                 {/* Comparative List */}
                 <div className="space-y-4 max-h-[580px] overflow-y-auto pr-2 custom-scrollbar">
                   <div className="flex items-center justify-between px-2 mb-2">
-                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Comparativa por Ítem</h3>
+                    <h3 className="text-sm font-semibold text-slate-400">Comparativa por Ítem</h3>
                     <div className="flex gap-4 text-[10px] font-bold text-slate-400 tracking-tighter">
                       <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500"></div> EST.</span>
                       <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-purple-500"></div> AUTO.</span>

@@ -1,16 +1,8 @@
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { FormModal } from "@/components/modals";
 import {
   Tabs,
   TabsContent,
@@ -25,7 +17,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { FileText, Edit3, Plus, Check, AlertCircle, Database } from "lucide-react";
 import { type Tipo } from "@/src/api";
 import { tiposEvaluacionService, categoriaTipoMapService } from "@/src/api";
@@ -37,7 +28,7 @@ interface ModalTipoEvaluacionProps {
   onClose: () => void;
   tipo?: Tipo;
   categoryId?: number;
-  onSuccess: () => void;
+  onSuccess: () => void | Promise<void>;
   onTipoCreated?: (tipo: Tipo) => void;
   onTipoUpdated?: (tipo: Tipo) => void;
 }
@@ -202,7 +193,8 @@ export function ModalTipoEvaluacion({
         }
       }
 
-      onSuccess();
+      // Esperar a que onSuccess se complete (si es una promesa) antes de cerrar
+      await Promise.resolve(onSuccess());
       onClose();
     } catch (error) {
       toast({
@@ -236,36 +228,24 @@ export function ModalTipoEvaluacion({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader className="text-center sm:text-left">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              {tipo ? (
-                <Edit3 className="h-5 w-5 text-primary" />
-              ) : (
-                <Plus className="h-5 w-5 text-primary" />
-              )}
-            </div>
-            <div className="flex-1">
-              <DialogTitle className="text-xl font-semibold">
-                {tipo ? "Editar Tipo de Evaluación" : "Nuevo Tipo de Evaluación"}
-              </DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                {tipo 
-                  ? "Modifica la información del tipo de evaluación"
-                  : "Crea un nuevo tipo de evaluación para el sistema"
-                }
-              </p>
-            </div>
-          </div>
-        </DialogHeader>
-
+    <FormModal
+      isOpen={isOpen}
+      onClose={onClose}
+      onSubmit={handleSubmit}
+      mode={tipo ? "edit" : "create"}
+      title={tipo ? "Editar Tipo de Evaluación" : "Nuevo Tipo de Evaluación"}
+      icon={tipo ? Edit3 : Plus}
+      size="2xl"
+      isLoading={isLoading}
+      loadingText={tipo ? "Actualizando..." : "Guardando..."}
+      submitText={tipo ? "Actualizar" : "Guardar"}
+      disableSubmit={!tipo && tabActiva === "banco" && !tipoSeleccionado}
+    >
         <Card className="border-0 shadow-none bg-muted/20">
           <CardContent className="p-5">
             {tipo ? (
               // Modo edición - solo una pestaña
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-6">
                 {/* Campo Nombre */}
                 <div className="space-y-3">
                   <Label htmlFor="nombre" className="text-sm font-medium flex items-center gap-2">
@@ -319,7 +299,7 @@ export function ModalTipoEvaluacion({
                     </div>
                   </div>
                 </div>
-              </form>
+              </div>
             ) : (
               // Modo creación - dos pestañas
               <Tabs value={tabActiva} onValueChange={(v) => setTabActiva(v as "crear" | "banco")}>
@@ -349,7 +329,7 @@ export function ModalTipoEvaluacion({
                     </ul>
                   </div>
 
-                  <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="space-y-6">
                     {/* Campo Nombre */}
                     <div className="space-y-3">
                       <Label htmlFor="nombre" className="text-sm font-medium flex items-center gap-2">
@@ -403,7 +383,7 @@ export function ModalTipoEvaluacion({
                         </div>
                       </div>
                     </div>
-                  </form>
+                  </div>
                 </TabsContent>
 
                 {/* Pestaña: Del Banco */}
@@ -457,37 +437,6 @@ export function ModalTipoEvaluacion({
             )}
           </CardContent>
         </Card>
-
-        <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-0 pt-2">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={onClose}
-            className="w-full sm:w-auto"
-            disabled={isLoading}
-          >
-            Cancelar
-          </Button>
-          <Button 
-            type="submit" 
-            onClick={handleSubmit}
-            className="w-full sm:w-auto"
-            disabled={isLoading || (!tipo && tabActiva === "banco" && !tipoSeleccionado)}
-          >
-            {isLoading ? (
-              <div className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                {tipo ? "Actualizando..." : "Guardando..."}
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                {tipo ? <Edit3 className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                {tipo ? "Actualizar" : "Guardar"}
-              </div>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </FormModal>
   );
 }

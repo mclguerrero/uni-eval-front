@@ -4,14 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { BaseModal } from "@/components/modals";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, Edit3, FileText } from "lucide-react";
@@ -27,7 +20,7 @@ import {
 interface ModalEditarAspectoEscalaProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: () => void | Promise<void>;
   opcion: AspectoEscalaOpcion | null;
   cfgTId?: number; // ID de la configuración actual para resaltar escalas
 }
@@ -149,7 +142,7 @@ export function ModalEditarAspectoEscala({
           title: "Opción actualizada",
           description: "Los cambios fueron guardados correctamente",
         });
-        onSuccess();
+        await Promise.resolve(onSuccess());
         onClose();
       } else {
         throw new Error(response.error?.message || "No se pudo actualizar la opción");
@@ -175,25 +168,38 @@ export function ModalEditarAspectoEscala({
   if (!opcion) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Edit3 className="h-5 w-5 text-primary" />
-            </div>
-            <div className="flex-1">
-              <DialogTitle className="text-xl font-semibold">
-                Editar Opción Aspecto-Escala
-              </DialogTitle>
-              <DialogDescription className="text-sm mt-1">
-                Selecciona una escala diferente o actualiza las opciones de comentario
-              </DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
-
-        <Card className="border shadow-none bg-muted/20">
+    <BaseModal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="Editar Opción Aspecto-Escala"
+      description="Selecciona una escala diferente o actualiza las opciones de comentario"
+      icon={Edit3}
+      size="xl"
+      closeOnOverlayClick={!isLoading}
+      showCloseButton={!isLoading}
+      footer={
+        <div className="flex w-full gap-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleClose}
+            disabled={isLoading}
+            className="flex-1 h-12 rounded-2xl border-2 border-slate-200 text-sm font-semibold hover:bg-slate-50 transition-all"
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isLoading}
+            className="flex-1 h-12 rounded-2xl bg-slate-900 text-sm font-semibold text-white shadow-xl shadow-slate-200 hover:bg-slate-800 active:scale-95 transition-all"
+          >
+            {isLoading ? "Guardando..." : "Guardar cambios"}
+          </Button>
+        </div>
+      }
+    >
+      <Card className="border shadow-none bg-muted/20">
           <CardContent className="p-4 space-y-4">
             {/* Información del aspecto y escala actual */}
             <div className="space-y-2">
@@ -288,20 +294,6 @@ export function ModalEditarAspectoEscala({
           </CardContent>
         </Card>
 
-        <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-0">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleClose}
-            disabled={isLoading}
-          >
-            Cancelar
-          </Button>
-          <Button onClick={handleSubmit} disabled={isLoading}>
-            {isLoading ? "Guardando..." : "Guardar cambios"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </BaseModal>
   );
 }

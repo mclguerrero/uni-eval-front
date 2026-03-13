@@ -46,7 +46,7 @@ interface AeViewProps {
   configuracionAspectos: CfgAItem[];
   cfgTId: number;
   setModalAe: (value: any) => void;
-  onConfigUpdated?: () => void;
+  onConfigUpdated?: () => void | Promise<void>;
 }
 
 export function AeView({
@@ -130,7 +130,7 @@ export function AeView({
           title: "Opción eliminada",
           description: "La relación aspecto-escala fue eliminada correctamente",
         });
-        onConfigUpdated?.();
+        await Promise.resolve(onConfigUpdated?.());
       } else {
         throw new Error(response.error?.message || "No se pudo eliminar");
       }
@@ -154,7 +154,7 @@ export function AeView({
           title: "Aspecto eliminado",
           description: "El aspecto y sus escalas fueron eliminados correctamente",
         });
-        onConfigUpdated?.();
+        await Promise.resolve(onConfigUpdated?.());
       } else {
         throw new Error(response.error?.message || "No se pudo eliminar");
       }
@@ -210,7 +210,7 @@ export function AeView({
           title: "Aspecto actualizado",
           description: "La relación fue actualizada correctamente",
         });
-        onConfigUpdated?.();
+        await Promise.resolve(onConfigUpdated?.());
         setEditAspecto(null);
         setNewAspectoCfgAId("");
       } else {
@@ -243,13 +243,13 @@ export function AeView({
               <Link2 className="h-8 w-8 text-indigo-500" />
            </div>
            <div>
-              <h3 className="text-lg font-black text-slate-900 italic uppercase tracking-tight">Matriz de Relación</h3>
+              <h3 className="text-lg font-bold text-slate-900 tracking-tight">Matriz de Relación</h3>
               <p className="text-xs font-medium text-slate-400 mt-1">Vincula aspectos con escalas de valoración específicas.</p>
               <div className="flex items-center gap-3 mt-3">
-                 <Badge className="bg-white border border-slate-200 text-slate-500 rounded-lg font-black text-[9px] uppercase tracking-tighter px-2 h-5">
+                  <Badge className="bg-white border border-slate-200 text-slate-500 rounded-lg font-semibold text-xs px-2 h-5">
                    Aspectos: {aspectosConEscalas.length}
                  </Badge>
-                 <Badge className="bg-white border border-slate-200 text-indigo-500 rounded-lg font-black text-[9px] uppercase tracking-tighter px-2 h-5">
+                  <Badge className="bg-white border border-slate-200 text-indigo-500 rounded-lg font-semibold text-xs px-2 h-5">
                    Total Opciones: {totalOpciones}
                  </Badge>
               </div>
@@ -257,7 +257,7 @@ export function AeView({
         </div>
         <Button 
           onClick={() => setModalAe({ isOpen: true })}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl px-6 h-12 font-bold text-xs uppercase tracking-widest shadow-lg shadow-indigo-200 transition-all active:scale-95 flex items-center gap-2"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl px-6 h-12 font-semibold text-sm shadow-lg shadow-indigo-200 transition-all active:scale-95 flex items-center gap-2"
         >
           <Plus className="h-4 w-4" />
           Nueva Vinculación
@@ -267,14 +267,14 @@ export function AeView({
       {aspectosConEscalas.length === 0 ? (
         <div className="bg-slate-50/50 border border-slate-100 border-dashed rounded-[3rem] p-20 text-center">
           <Layers className="h-16 w-16 text-slate-200 mx-auto mb-6 opacity-50" />
-          <h3 className="text-xl font-black text-slate-900 italic tracking-tight uppercase mb-2">Sin relaciones configuradas</h3>
+          <h3 className="text-xl font-bold text-slate-900 tracking-tight mb-2">Sin relaciones configuradas</h3>
           <p className="text-slate-400 font-medium text-sm max-w-xs mx-auto mb-8">
             Define qué escalas de respuesta pertenecen a cada aspecto de evaluación.
           </p>
           <Button 
             onClick={() => setModalAe({ isOpen: true })}
             variant="outline"
-            className="rounded-2xl border-slate-200 text-slate-600 font-bold text-xs uppercase tracking-widest px-8"
+            className="rounded-2xl border-slate-200 text-slate-600 font-semibold text-sm px-8"
           >
             Vincular ahora
           </Button>
@@ -295,11 +295,11 @@ export function AeView({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <h3 className="font-black text-slate-900 text-sm uppercase tracking-tight truncate">{aspecto.nombre}</h3>
+                      <h3 className="font-bold text-slate-900 text-sm truncate">{aspecto.nombre}</h3>
                       <div className="flex gap-1">
-                        {aspecto.es_activo && <Badge className="bg-emerald-50 text-emerald-600 border-none rounded-md text-[8px] font-black uppercase tracking-tighter h-4">Activo</Badge>}
-                        {aspecto.es_cmt && <Badge className="bg-blue-50 text-blue-600 border-none rounded-md text-[8px] font-black uppercase tracking-tighter h-4">Comentarios</Badge>}
-                        {aspecto.es_cmt_oblig && <Badge className="bg-rose-50 text-rose-600 border-none rounded-md text-[8px] font-black uppercase tracking-tighter h-4">Req. Feedback</Badge>}
+                        {aspecto.es_activo && <Badge className="bg-emerald-50 text-emerald-600 border-none rounded-md text-xs font-semibold h-4">Activo</Badge>}
+                        {aspecto.es_cmt && <Badge className="bg-blue-50 text-blue-600 border-none rounded-md text-xs font-semibold h-4">Comentarios</Badge>}
+                        {aspecto.es_cmt_oblig && <Badge className="bg-rose-50 text-rose-600 border-none rounded-md text-xs font-semibold h-4">Req. Feedback</Badge>}
                       </div>
                     </div>
                     {aspecto.descripcion && (
@@ -312,8 +312,8 @@ export function AeView({
 
                 <div className="flex items-center gap-2">
                    <div className="hidden sm:flex flex-col items-end mr-4">
-                      <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Orden {aspecto.orden}</span>
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{aspecto.opciones.length} Opciones vinculadas</span>
+                        <span className="text-xs font-medium text-slate-300">Orden {aspecto.orden}</span>
+                        <span className="text-xs font-medium text-slate-400">{aspecto.opciones.length} Opciones vinculadas</span>
                    </div>
                    <div className="flex items-center gap-1">
                     <Button
@@ -360,7 +360,7 @@ export function AeView({
                           <MessageCircle className="h-5 w-5" />
                         </div>
                         <div>
-                          <p className="text-xs font-black text-slate-900 uppercase tracking-tight">Modo Comentario Exclusivo</p>
+                          <p className="text-xs font-bold text-slate-900">Modo Comentario Exclusivo</p>
                           <p className="text-[11px] font-medium text-slate-400 mt-1 italic">
                             Este aspecto solo recolectará retroalimentación cualitativa.
                           </p>
@@ -370,7 +370,7 @@ export function AeView({
                       <div className="space-y-4">
                         <div className="flex items-center gap-2 px-2">
                            <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mt-0.5">Escalas Vinculadas</span>
+                             <span className="text-xs font-medium text-slate-400 leading-none mt-0.5">Escalas Vinculadas</span>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {aspecto.opciones.map((opcion) => (
@@ -383,7 +383,7 @@ export function AeView({
                                   <Badge variant="outline" className="h-6 w-10 flex items-center justify-center bg-slate-50 text-slate-400 border-slate-100 rounded-lg font-black text-[9px]">
                                     {opcion.sigla}
                                   </Badge>
-                                  <p className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">
+                                  <p className="font-bold text-slate-900 text-sm truncate">
                                     {opcion.nombre}
                                   </p>
                                   {opcion.puntaje && (
@@ -465,7 +465,7 @@ export function AeView({
       >
         <DialogContent className="sm:max-w-md rounded-[2.5rem] border-slate-100 shadow-2xl">
           <DialogHeader className="p-2">
-            <DialogTitle className="text-xl font-black text-slate-900 italic uppercase tracking-tight">Cambiar Aspecto Base</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-slate-900 tracking-tight">Cambiar Aspecto Base</DialogTitle>
             <DialogDescription className="text-xs font-medium text-slate-400">
               Reemplaza el aspecto actual manteniendo el contexto de la configuración.
             </DialogDescription>
@@ -473,7 +473,7 @@ export function AeView({
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Nuevo Descriptor</Label>
+              <Label className="text-sm font-semibold text-slate-400 px-1">Nuevo Descriptor</Label>
               <Select value={newAspectoCfgAId} onValueChange={setNewAspectoCfgAId}>
                 <SelectTrigger className="h-12 rounded-2xl border-slate-100 bg-slate-50/50 focus:ring-indigo-500 font-bold text-sm">
                   <SelectValue placeholder="Seleccionar aspecto disponible..." />
@@ -489,7 +489,7 @@ export function AeView({
                             {item.es_configuracion_actual ? (
                               <Badge className="bg-indigo-50 text-indigo-600 border-none rounded-md text-[8px] font-black h-4 px-1.5">ACTUAL</Badge>
                             ) : (
-                              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{item.tipo_evaluacion}</span>
+                              <span className="text-xs font-medium text-slate-400">{item.tipo_evaluacion}</span>
                             )}
                           </div>
                         </div>
@@ -500,7 +500,7 @@ export function AeView({
               {isLoadingAspectos && (
                 <div className="flex items-center gap-2 px-1">
                    <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
-                   <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Sincronizando catálogo...</p>
+                     <p className="text-xs font-medium text-slate-300">Sincronizando catálogo...</p>
                 </div>
               )}
             </div>
@@ -517,14 +517,14 @@ export function AeView({
                 }
               }}
               disabled={isUpdatingAspecto}
-              className="rounded-2xl font-bold text-xs uppercase tracking-widest"
+              className="rounded-2xl font-semibold text-sm"
             >
               Cerrar
             </Button>
             <Button 
               onClick={handleUpdateAspecto} 
               disabled={isUpdatingAspecto}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl px-6 font-bold text-xs uppercase tracking-widest shadow-lg shadow-indigo-100 transition-all active:scale-95"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl px-6 font-semibold text-sm shadow-lg shadow-indigo-100 transition-all active:scale-95"
             >
               {isUpdatingAspecto ? "Procesando..." : "Confirmar Cambio"}
             </Button>
@@ -535,9 +535,9 @@ export function AeView({
       <ModalEditarAspectoEscala
         isOpen={Boolean(editOpcionId)}
         onClose={() => setEditOpcionId(null)}
-        onSuccess={() => {
+        onSuccess={async () => {
           setEditOpcionId(null);
-          onConfigUpdated?.();
+          await Promise.resolve(onConfigUpdated?.());
         }}
         opcion={findOpcionByAeId(editOpcionId || 0)}
         cfgTId={cfgTId}

@@ -20,24 +20,9 @@ import {
   Settings
 } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
-import MateriasModal from "./MateriasModal"
+import MateriasModal from "../../components/MateriasModal"
 import type { DocenteGeneralMetrics } from "@/src/api/services/metric/metric.service"
-
-interface FiltrosState {
-  configuracionSeleccionada: number | null
-  semestreSeleccionado: string
-  periodoSeleccionado: string
-  programaSeleccionado: string
-  grupoSeleccionado: string
-  sedeSeleccionada: string
-}
-
-interface PaginationInfo {
-  page: number
-  limit: number
-  total: number
-  pages: number
-}
+import type { FiltrosState, PaginationInfo } from "../../types"
 
 interface DocentesListProps {
   docentes: DocenteGeneralMetrics[]
@@ -171,12 +156,12 @@ export default function DocentesList({
           />
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="h-8 px-4 rounded-full border-slate-200 text-slate-500 font-black text-[10px] uppercase tracking-widest bg-white shadow-sm">
+          <Badge variant="outline" className="h-8 px-4 rounded-full border-slate-200 text-slate-500 font-medium text-xs bg-white shadow-sm">
             <Users className="w-3.5 h-3.5 mr-2 text-indigo-500" />
             {pagination.total} Docentes
           </Badge>
           <div className="h-4 w-px bg-slate-200 mx-2" />
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Página {pagination.page} / {pagination.pages}</p>
+          <p className="text-xs font-medium text-muted-foreground">Página {pagination.page} / {pagination.pages}</p>
         </div>
       </div>
 
@@ -186,12 +171,12 @@ export default function DocentesList({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-50 bg-slate-50/30">
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[34%] min-w-[280px]">Docente</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Estado Operativo</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Evaluaciones</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Cumplimiento</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Calificación</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Acciones</th>
+                <th className="px-6 py-5 text-xs font-medium text-muted-foreground w-[34%] min-w-[280px] text-left">Docente</th>
+                <th className="px-6 py-5 text-xs font-medium text-muted-foreground text-left">Estado Operativo</th>
+                <th className="px-6 py-5 text-xs font-medium text-muted-foreground text-center">Evaluaciones</th>
+                <th className="px-6 py-5 text-xs font-medium text-muted-foreground text-left">Cumplimiento</th>
+                <th className="px-6 py-5 text-xs font-medium text-muted-foreground text-center">Calificación</th>
+                <th className="px-6 py-5 text-xs font-medium text-muted-foreground text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -255,7 +240,7 @@ export default function DocentesList({
                             <p className="font-bold text-slate-900 group-hover:text-indigo-900 transition-colors whitespace-normal break-words leading-snug">
                               {docente.nombre_docente || 'Sin nombre'}
                             </p>
-                            <p className="text-[10px] font-black text-slate-400 font-mono mt-1 uppercase tracking-widest flex items-center gap-1.5 whitespace-normal break-all">
+                            <p className="text-xs font-medium text-muted-foreground font-mono mt-1 flex items-center gap-1.5 whitespace-normal break-all">
                               <span className="h-1 w-1 rounded-full bg-slate-300" />
                               ID: {docente.docente}
                             </p>
@@ -263,7 +248,7 @@ export default function DocentesList({
                         </div>
                       </td>
                       <td className="px-6 py-6">
-                        <Badge variant="outline" className={`rounded-full border-2 px-3 py-1 font-black text-[9px] uppercase tracking-widest flex items-center w-fit gap-2 shadow-sm ${status.color}`}>
+                        <Badge variant="outline" className={`rounded-full border-2 px-3 py-1 font-medium text-xs flex items-center w-fit gap-2 shadow-sm ${status.color}`}>
                           <span className="relative flex h-2 w-2">
                              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${status.color.split(' ')[1].replace('text-', 'bg-')}`}></span>
                              <span className={`relative inline-flex rounded-full h-2 w-2 ${status.color.split(' ')[1].replace('text-', 'bg-')}`}></span>
@@ -275,7 +260,7 @@ export default function DocentesList({
                         <div className="flex flex-col items-center">
                           <div className="flex items-center gap-1.5 mb-2">
                             <span className="text-sm font-black text-slate-700">{docente.total_realizadas}</span>
-                            <span className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter">/ {docente.total_evaluaciones}</span>
+                            <span className="text-xs font-normal text-slate-300">/ {docente.total_evaluaciones}</span>
                           </div>
                           <div className="flex gap-1">
                             {Array.from({ length: 5 }).map((_, i) => (
@@ -293,7 +278,7 @@ export default function DocentesList({
                         <div className="w-32">
                           <div className="flex justify-between items-center mb-1.5 px-0.5">
                             <span className="text-[10px] font-black text-slate-900 italic tracking-tighter">{compliance.toFixed(0)}%</span>
-                            <span className="text-[8px] font-bold text-slate-300 uppercase">Progreso</span>
+                            <span className="text-xs font-normal text-slate-300">Progreso</span>
                           </div>
                           <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-50">
                             <div
@@ -327,7 +312,7 @@ export default function DocentesList({
                           className="rounded-2xl border-2 border-slate-100 hover:border-slate-900 hover:bg-slate-900 hover:text-white transition-all duration-300 group/btn h-11 px-6 shadow-sm active:scale-95"
                         >
                           <Settings className="w-4 h-4 mr-2 group-hover/btn:rotate-90 transition-transform duration-500" />
-                          <span className="font-black text-[10px] uppercase tracking-widest">Gestionar</span>
+                          <span className="font-medium text-xs">Gestionar</span>
                         </Button>
                       </td>
                     </tr>
@@ -341,7 +326,7 @@ export default function DocentesList({
                         <FileSearch className="w-16 h-16 text-slate-200" />
                       </div>
                       <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-2 italic">Sin resultados</h3>
-                      <p className="text-xs font-bold text-slate-400 leading-relaxed uppercase tracking-tight">
+                      <p className="text-xs font-semibold text-slate-400 leading-relaxed">
                         No pudimos encontrar docentes con los filtros actuales.
                       </p>
                     </div>
@@ -355,7 +340,7 @@ export default function DocentesList({
 
       {/* Pagination Footer */}
       <div className="flex items-center justify-between px-6 py-4 bg-slate-50/50 rounded-3xl border border-slate-100">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] hidden md:block">
+        <p className="text-xs font-medium text-muted-foreground hidden md:block">
           Mostrando {docentes.length} de {pagination.total} registros institucionales
         </p>
         <div className="flex items-center gap-2 mx-auto md:mx-0">

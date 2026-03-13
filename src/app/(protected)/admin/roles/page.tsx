@@ -16,46 +16,47 @@ import {
   UserCheck,
   CheckCircle2
 } from "lucide-react";
-import { rolService, userRolService, userProgService, type Rol, type UserRol } from "@/src/api/services/app/rol.service";
+import {
+  rolService,
+  userRolService,
+  userProgService,
+  type Rol,
+  type UserRol,
+  type UserRolWithDatalogin,
+  type UserProgWithDatalogin,
+} from "@/src/api/services/app/rol.service";
 import { RolesView } from "./components/views/RolesView";
 import { UserRolesView } from "./components/views/UserRolesView";
 import { UserProgView } from "./components/views/UserProgView";
 import { ModalRol } from "./components/modals/ModalRol";
 import { ModalUserRol } from "./components/modals/ModalUserRol";
 import { ModalUserProg } from "./components/modals/ModalUserProg";
-import { ModalConfirmacion } from "./components/modals/ModalConfirmacion";
 import { tokenManager } from "@/src/api/utils/tokenManager";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-
-// Interfaz para UserProg
-interface UserProg {
-  id: number;
-  user_rol_id: number;
-  prog_id: number;
-  prog_nombre?: string;
-  datalogin?: {
-    user_name: string;
-    user_username: string;
-    user_email: string;
-    user_idrole: number;
-    user_statusid: string;
-    role_name: string;
-  };
-  fecha_creacion?: string;
-  fecha_actualizacion?: string;
-}
+import { useDeleteConfirmation } from "../hooks";
+import { ConfirmDeleteDialog } from "../components/shared";
 
 export default function RolesPage() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("roles");
   const [roles, setRoles] = useState<Rol[]>([]);
-  const [userRoles, setUserRoles] = useState<UserRol[]>([]);
-  const [userProgs, setUserProgs] = useState<UserProg[]>([]);
+  const [userRoles, setUserRoles] = useState<UserRolWithDatalogin[]>([]);
+  const [userProgs, setUserProgs] = useState<UserProgWithDatalogin[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // ... (existing states for modals)
-  // [KEEPING EXISTING MODAL STATES - summarized for brevity in thoughts but must be complete in replacement]
+  // Hook para confirmación de eliminación
+  const { confirmationDialog, requestDeleteConfirmation } = useDeleteConfirmation({
+    onSuccess: () => {
+      // Se ejecutará después de la eliminación exitosa
+      toast({
+        title: "Eliminado",
+        description: "El elemento ha sido eliminado correctamente.",
+      });
+    },
+  });
+
+  // Estados para modales
   const [modalRol, setModalRol] = useState({
     isOpen: false,
     rol: undefined as Rol | undefined,
@@ -68,14 +69,7 @@ export default function RolesPage() {
 
   const [modalUserProg, setModalUserProg] = useState({
     isOpen: false,
-    userProg: undefined as UserProg | undefined,
-  });
-
-  const [modalConfirmacion, setModalConfirmacion] = useState({
-    isOpen: false,
-    title: "",
-    description: "",
-    onConfirm: async () => {},
+    userProg: undefined as UserProgWithDatalogin | undefined,
   });
 
   // Cargar datos iniciales
@@ -101,7 +95,7 @@ export default function RolesPage() {
         userProgService.getUserProgs()
       ]);
 
-      const rolesData = (rolesResponse as any)?.data?.data || [];
+      const rolesData = rolesResponse.data?.data || [];
       const userRolesData = userRolesResponse?.data || [];
       const userProgsData = userProgsResponse?.data || [];
 
@@ -123,7 +117,7 @@ export default function RolesPage() {
   const cargarRoles = async () => {
     try {
       const rolesResponse = await rolService.getAll();
-      setRoles((rolesResponse as any)?.data?.data || []);
+      setRoles(rolesResponse.data?.data || []);
     } catch (error) {
       console.error("❌ Error al cargar roles:", error);
     }
@@ -148,76 +142,42 @@ export default function RolesPage() {
   };
 
   // Handlers
-  const handleEliminarRol = async (rol: Rol) => {
-    setModalConfirmacion({
-      isOpen: true,
-      title: "Eliminar Rol de Seguridad",
-      description: `¿Está seguro de eliminar el rol "${rol.nombre}"? Esta acción afectará los permisos de los usuarios asignados.`,
-      onConfirm: async () => {
-        try {
-          await rolService.delete(rol.id);
-          await cargarRoles();
-          toast({
-            title: "Rol Eliminado",
-            description: `La jerarquía "${rol.nombre}" ha sido borrada del sistema.`,
-          });
-        } catch (error: any) {
-          throw error;
-        }
-      },
-    });
+  const handleEliminarRol = (rol: Rol) => {
+    requestDeleteConfirmation(
+      "Eliminar Rol de Seguridad",
+      `¿Está seguro de eliminar el rol "${rol.nombre}"? Esta acción afectará los permisos de los usuarios asignados.`,
+      () => rolService.delete(rol.id),
+      () => cargarRoles()
+    );
   };
 
-  const handleEliminarUserRol = async (userRol: UserRol) => {
-    setModalConfirmacion({
-      isOpen: true,
-      title: "Revocar Asignación de Rol",
-      description: `¿Revocar privilegios para el usuario con ID ${userRol.user_id}?`,
-      onConfirm: async () => {
-        try {
-          await userRolService.delete(userRol.id);
-          await cargarUserRoles();
-          toast({
-            title: "Privilegios Revocados",
-            description: `El usuario ya no cuenta con el rol asignado.`,
-          });
-        } catch (error: any) {
-          throw error;
-        }
-      },
-    });
+  const handleEliminarUserRol = (userRol: UserRol) => {
+    requestDeleteConfirmation(
+      "Revocar Asignación de Rol",
+      `¿Revocar privilegios para el usuario con ID ${userRol.user_id}?`,
+      () => userRolService.delete(userRol.id),
+      () => cargarUserRoles()
+    );
   };
 
-  const handleEliminarUserProg = async (userProg: UserProg) => {
-    setModalConfirmacion({
-      isOpen: true,
-      title: "Desvincular Programa Académico",
-      description: `¿Eliminar la asociación de este programa para el usuario?`,
-      onConfirm: async () => {
-        try {
-          await userProgService.delete(userProg.id);
-          await cargarUserProgs();
-          toast({
-            title: "Programa Desvinculado",
-            description: `La asociación académica ha sido eliminada con éxito.`,
-          });
-        } catch (error: any) {
-          throw error;
-        }
-      },
-    });
+  const handleEliminarUserProg = (userProg: UserProgWithDatalogin) => {
+    requestDeleteConfirmation(
+      "Desvincular Programa Académico",
+      `¿Eliminar la asociación de este programa para el usuario?`,
+      () => userProgService.delete(userProg.id),
+      () => cargarUserProgs()
+    );
   };
 
   const handleCerrarModalRol = () => setModalRol({ isOpen: false, rol: undefined });
   const handleCerrarModalUserRol = () => setModalUserRol({ isOpen: false, userRol: undefined });
   const handleCerrarModalUserProg = () => setModalUserProg({ isOpen: false, userProg: undefined });
-  const handleCerrarModalConfirmacion = () => setModalConfirmacion({ ...modalConfirmacion, isOpen: false });
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#F8FAFC]">
-        <header className="sticky top-0 z-40 bg-white border-b border-slate-100 h-20 flex items-center px-12">
-          <div className="flex items-center gap-6">
+        <header className="sticky top-0 z-40 bg-white border-b border-slate-100 h-20 flex items-center">
+          <div className="mx-auto h-20 w-full max-w-[1680px] px-6 lg:px-8 xl:px-10 flex items-center gap-6">
             <Skeleton className="h-12 w-12 rounded-2xl" />
             <div className="space-y-2">
               <Skeleton className="h-5 w-48" />
@@ -226,7 +186,7 @@ export default function RolesPage() {
           </div>
         </header>
 
-        <main className="w-full p-12 space-y-12">
+        <main className="mx-auto w-full max-w-[1680px] px-6 py-10 lg:px-8 xl:px-10 space-y-12">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-40 rounded-[2.5rem] bg-white border border-slate-100" />
@@ -258,17 +218,17 @@ export default function RolesPage() {
     <div className="min-h-screen bg-[#F8FAFC]">
       {/* Dynamic Header - Ultra Clean */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-2xl border-b border-slate-100/80">
-        <div className="w-full px-8 lg:px-12 h-20 flex justify-between items-center">
+        <div className="mx-auto h-20 w-full max-w-[1680px] px-6 lg:px-8 xl:px-10 flex justify-between items-center">
           <div className="flex items-center gap-6">
             <div className="h-12 w-12 rounded-[1.25rem] bg-slate-900 flex items-center justify-center shadow-lg shadow-slate-200 rotate-3 hover:rotate-0 transition-transform duration-500">
               <ShieldCheck className="h-6 w-6 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-black text-slate-900 tracking-tighter uppercase italic leading-none">Security Console</h1>
-                <Badge className="bg-emerald-50 text-emerald-600 border-none font-black text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-md">Live</Badge>
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight leading-none">Security Console</h1>
+                <Badge className="bg-emerald-50 text-emerald-600 border-none font-medium text-xs px-2 py-0.5 rounded-md">Live</Badge>
               </div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-1.5 opacity-70">Control de Accesos e Identidades</p>
+              <p className="text-xs font-medium text-muted-foreground mt-1.5">Control de Accesos e Identidades</p>
             </div>
           </div>
 
@@ -280,13 +240,13 @@ export default function RolesPage() {
                className="h-10 px-4 rounded-xl text-slate-400 hover:text-slate-900 hover:bg-slate-50 gap-2 transition-all"
              >
                 <div className={`h-1.5 w-1.5 rounded-full bg-emerald-500 ${isLoading ? 'animate-ping' : ''}`} />
-                <span className="text-[10px] font-black uppercase tracking-widest">Sincronizar Repositorio</span>
+                <span className="text-xs font-medium">Sincronizar Repositorio</span>
              </Button>
           </div>
         </div>
       </header>
 
-      <main className="w-full p-8 lg:p-12 space-y-12">
+      <main className="mx-auto w-full max-w-[1680px] px-6 py-10 lg:px-8 xl:px-10 space-y-12">
         
         {/* Quick Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -310,7 +270,7 @@ export default function RolesPage() {
                   <tab.icon className="w-5 h-5" />
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{tab.label}</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">{tab.label}</p>
                   <p className="text-3xl font-black text-slate-900 tracking-tighter italic">{tab.count}</p>
                 </div>
               </div>
@@ -355,7 +315,7 @@ export default function RolesPage() {
                       <tab.icon className="w-4 h-4" />
                     </div>
                     <div className="text-left flex-1">
-                      <p className="text-[11px] uppercase tracking-wider leading-none">{tab.label}</p>
+                      <p className="text-xs leading-none">{tab.label}</p>
                     </div>
                     {activeTab === tab.id && (
                       <div className={`h-1.5 w-1.5 rounded-full bg-${tab.color}-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]`} />
@@ -363,17 +323,6 @@ export default function RolesPage() {
                   </button>
                 ))}
               </nav>
-
-              <div className="mt-8 p-6 bg-slate-900 rounded-[2rem] text-white overflow-hidden relative group">
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform duration-700">
-                  <ShieldCheck className="w-20 h-20" />
-                </div>
-                <p className="text-[9px] font-black uppercase tracking-[0.3em] opacity-40 mb-2">Ayuda Rápida</p>
-                <p className="text-xs font-bold leading-relaxed mb-4 relative z-10">¿Necesitas ayuda con los niveles de acceso?</p>
-                <Button variant="outline" className="w-full bg-white/10 border-white/20 hover:bg-white/20 text-white rounded-xl text-[10px] font-black uppercase tracking-widest h-9">
-                  Documentación
-                </Button>
-              </div>
             </div>
           </div>
 
@@ -434,13 +383,7 @@ export default function RolesPage() {
           onSuccess={cargarUserProgs}
         />
 
-        <ModalConfirmacion
-          isOpen={modalConfirmacion.isOpen}
-          onClose={handleCerrarModalConfirmacion}
-          title={modalConfirmacion.title}
-          description={modalConfirmacion.description}
-          onConfirm={modalConfirmacion.onConfirm}
-        />
+        <ConfirmDeleteDialog {...confirmationDialog} />
       </main>
 
       <style jsx global>{`

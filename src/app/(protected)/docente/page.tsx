@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { metricService } from '@/src/api/services/metric/metric.service';
-import { httpClient } from '@/src/api/core/HttpClient';
 import type { 
   DocenteGeneralMetrics, 
   DocenteMateriasMetrics, 
@@ -29,29 +28,12 @@ import {
   BarChart3
 } from 'lucide-react';
 
-// Tipos locales para endpoint /user de docente
-interface DocenteMateria {
-  id: number;
-  codigo: number;
-  nombre: string;
-  programa: string;
-  semestre: string;
-  grupos: Array<{ nombre: string }>;
-}
-
-interface DocenteUserData {
-  documento: string;
-  nombre: string;
-  materias: DocenteMateria[];
-}
-
 export default function DocentePage() {
   const { user, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   // Datos del docente
-  const [userData, setUserData] = useState<DocenteUserData | null>(null);
   const [dashboardData, setDashboardData] = useState<DocenteGeneralMetrics | null>(null);
   const [materiasData, setMateriasData] = useState<DocenteMateriasMetrics | null>(null);
   
@@ -74,10 +56,6 @@ export default function DocentePage() {
       try {
         setLoading(true);
         setError(null);
-
-        // Cargar datos del usuario desde /user usando httpClient
-        const userDataResponse = await httpClient.get<DocenteUserData>('/user');
-        setUserData(userDataResponse);
 
         // Cargar dashboard del docente
         const dashboard = await metricService.getDocentes({
@@ -151,7 +129,7 @@ export default function DocentePage() {
     );
   }
 
-  if (!userData || !dashboardData) {
+  if (!dashboardData || !user) {
     return (
       <div className="p-6">
         <Alert>
@@ -169,7 +147,7 @@ export default function DocentePage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Mi Dashboard</h1>
           <p className="text-muted-foreground mt-1">
-            {userData.nombre}
+            {user.user_name}
           </p>
         </div>
         <Badge variant="outline" className="text-lg px-4 py-2">
@@ -408,9 +386,9 @@ function MateriaDetails({ materia, completion, aspectos, onClose }: MateriaDetai
             <BarChart3 className="h-5 w-5" />
             Evaluación por Aspectos
           </h3>
-          {aspectos.aspectos.length > 0 ? (
+          {aspectos.evaluacion_estudiantes.aspectos.length > 0 ? (
             <div className="space-y-3">
-              {aspectos.aspectos.map((aspecto) => (
+              {aspectos.evaluacion_estudiantes.aspectos.map((aspecto) => (
                 <div key={aspecto.aspecto_id} className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium">{aspecto.nombre}</span>
@@ -429,11 +407,11 @@ function MateriaDetails({ materia, completion, aspectos, onClose }: MateriaDetai
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">Promedio General:</span>
-                    <p className="text-xl font-bold">{aspectos.promedio?.toFixed(2) ?? 'N/A'}</p>
+                    <p className="text-xl font-bold">{aspectos.evaluacion_estudiantes.promedio_general?.toFixed(2) ?? 'N/A'}</p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Desviación:</span>
-                    <p className="text-xl font-bold">{aspectos.desviacion?.toFixed(2) ?? 'N/A'}</p>
+                    <p className="text-xl font-bold">{aspectos.evaluacion_estudiantes.desviacion?.toFixed(2) ?? 'N/A'}</p>
                   </div>
                 </div>
               </div>

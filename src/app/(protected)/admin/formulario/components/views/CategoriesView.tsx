@@ -116,12 +116,12 @@ export function CategoriesView({
       {/* Header section for the list */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/50 p-6 rounded-[2rem] border border-slate-100">
         <div>
-           <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.3em] italic mb-1">Estructura de Datos</h3>
+           <h3 className="text-sm font-semibold text-slate-400 mb-1">Estructura de Datos</h3>
            <p className="text-xs font-medium text-slate-400">Organiza y gestiona los componentes esenciales de tus evaluaciones.</p>
         </div>
         <Button 
           onClick={onAddCategory}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl px-6 h-12 font-bold text-xs uppercase tracking-widest shadow-lg shadow-indigo-200 transition-all active:scale-95 flex items-center gap-2"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl px-6 h-12 font-semibold text-sm shadow-lg shadow-indigo-200 transition-all active:scale-95 flex items-center gap-2"
         >
           <Plus className="h-4 w-4" />
           Nueva Categoría
@@ -134,7 +134,7 @@ export function CategoriesView({
             <div className="h-20 w-20 bg-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-slate-100">
               <Layers className="h-10 w-10 text-slate-200" />
             </div>
-            <h3 className="text-xl font-black text-slate-900 italic tracking-tight uppercase mb-2">Sin categorías registradas</h3>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Sin categorías registradas</h3>
             <p className="text-slate-400 font-medium text-sm max-w-xs mx-auto mb-8">
               No hemos encontrado categorías para {getTypeLabel().toLowerCase()}. Comienza creando una nueva.
             </p>
@@ -166,10 +166,10 @@ export function CategoriesView({
                         
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3 mb-1">
-                            <h4 className="text-lg font-black text-slate-900 italic uppercase tracking-tight truncate">
+                            <h4 className="text-lg font-bold text-slate-900 truncate">
                               {category.nombre}
                             </h4>
-                            <Badge className="bg-slate-100 text-slate-500 hover:bg-slate-200 border-none rounded-lg font-bold text-[9px] uppercase tracking-tighter px-2">
+                            <Badge className="bg-slate-100 text-slate-500 hover:bg-slate-200 border-none rounded-lg font-semibold text-xs px-2">
                                {categoryItems.get(category.id)?.length || 0} {getItemLabel()}(s)
                             </Badge>
                           </div>
@@ -208,14 +208,14 @@ export function CategoriesView({
                           <div className="flex justify-between items-center px-2">
                             <div className="flex items-center gap-2">
                                <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mt-0.5">
+                               <span className="text-xs font-medium text-slate-400 leading-none mt-0.5">
                                  {getTypeLabel()} Registrados
                                </span>
                             </div>
                             <Button
                               size="sm"
                               onClick={() => onAddItem(category.id)}
-                              className="h-9 px-4 rounded-xl bg-white border border-slate-200 text-slate-900 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-100 font-bold text-[10px] uppercase tracking-widest shadow-sm transition-all"
+                              className="h-9 px-4 rounded-xl bg-white border border-slate-200 text-slate-900 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-100 font-semibold text-sm shadow-sm transition-all"
                             >
                               <Plus className="h-3.5 w-3.5 mr-2" />
                               Vincular {getItemLabel()}
@@ -225,7 +225,7 @@ export function CategoriesView({
                           {!categoryItems.get(category.id) ||
                           categoryItems.get(category.id)!.length === 0 ? (
                             <div className="text-center py-10">
-                               <p className="text-xs font-bold text-slate-300 uppercase tracking-[0.2em]">Ningún {getItemLabel().toLowerCase()} vinculado</p>
+                               <p className="text-xs font-medium text-slate-300">Ningún {getItemLabel().toLowerCase()} vinculado</p>
                             </div>
                           ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -239,7 +239,7 @@ export function CategoriesView({
                                       <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 group-hover/item:bg-indigo-50 group-hover/item:text-indigo-600 transition-colors">
                                          <FileText className="h-4 w-4" />
                                       </div>
-                                      <p className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">
+                                      <p className="font-semibold text-slate-900 text-sm truncate">
                                         {item.sigla && (
                                           <span className="text-indigo-500/50 mr-2">
                                             [{item.sigla}]
@@ -259,7 +259,7 @@ export function CategoriesView({
                                     {item.es_activo !== undefined && (
                                       <Badge
                                         variant="outline"
-                                        className={`rounded-lg font-black text-[9px] uppercase tracking-tighter mr-2 border-none ${
+                                        className={`rounded-lg font-semibold text-xs mr-2 border-none ${
                                           item.es_activo
                                             ? "bg-emerald-50 text-emerald-600"
                                             : "bg-rose-50 text-rose-600"

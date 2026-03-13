@@ -210,7 +210,7 @@ export default function AnalisisAspectos({
             <div className="grid grid-cols-3 gap-4">
               {/* Evaluación Estudiantes */}
               <div className="p-4 rounded-lg bg-white border border-slate-200 hover:border-slate-300 transition-colors">
-                <p className="text-sm font-medium text-slate-500 uppercase tracking-tight mb-2">
+                <p className="text-sm font-medium text-slate-500 mb-2">
                   Estudiantes
                 </p>
                 <div className="flex items-baseline gap-1 mb-3">
@@ -227,7 +227,7 @@ export default function AnalisisAspectos({
 
               {/* Autoevaluación Docente */}
               <div className="p-4 rounded-lg bg-white border border-slate-200 hover:border-slate-300 transition-colors">
-                <p className="text-sm font-medium text-slate-500 uppercase tracking-tight mb-2">
+                <p className="text-sm font-medium text-slate-500 mb-2">
                   Docente
                 </p>
                 <div className="flex items-baseline gap-1 mb-3">
@@ -244,7 +244,7 @@ export default function AnalisisAspectos({
 
               {/* Resultado Final */}
               <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-slate-300 transition-colors">
-                <p className="text-sm font-medium text-slate-500 uppercase tracking-tight mb-2">
+                <p className="text-sm font-medium text-slate-500 mb-2">
                   Nota Final
                 </p>
                 <div className="flex items-baseline gap-1 mb-3">

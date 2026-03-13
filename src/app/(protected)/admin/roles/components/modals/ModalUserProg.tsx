@@ -19,43 +19,21 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { GraduationCap, Edit3, Plus, AlertCircle, User, Loader2, BookOpen } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { httpClient } from "@/src/api/core/HttpClient"
+import {
+  progService,
+  userProgService,
+  userRolService,
+  type Prog,
+  type UserProg,
+  type UserRolWithDatalogin,
+} from "@/src/api/services/app/rol.service"
 
-// Interfaz para UserRol (usuario con rol asignado)
-interface UserRol {
-  id: number;
-  user_id: number;
-  rol_id: number;
-  rol_nombre: string;
-  datalogin: {
-    user_name: string;
-    user_username: string;
-    user_email: string;
-    user_idrole: number;
-    user_statusid: string;
-    role_name: string;
-  };
-}
-
-// Interfaz para Programa
-interface Programa {
-  id: number;
-  nombre: string;
-}
-
-// Interfaz para UserProg
-interface UserProg {
-  id?: number;
-  user_rol_id: number;
-  prog_id: number;
-  user_rol?: UserRol;
-  programa?: Programa;
-}
+type EditableUserProg = Partial<UserProg> & Pick<UserProg, "user_rol_id" | "prog_id">
 
 interface ModalUserProgProps {
   isOpen: boolean
   onClose: () => void
-  userProg?: UserProg
+  userProg?: EditableUserProg
   onSuccess: () => void
 }
 
@@ -72,8 +50,8 @@ export function ModalUserProg({
     progId: 0
   })
 
-  const [userRoles, setUserRoles] = useState<UserRol[]>([])
-  const [programas, setProgramas] = useState<Programa[]>([])
+  const [userRoles, setUserRoles] = useState<UserRolWithDatalogin[]>([])
+  const [programas, setProgramas] = useState<Prog[]>([])
   const [isLoadingUserRoles, setIsLoadingUserRoles] = useState(false)
   const [isLoadingProgramas, setIsLoadingProgramas] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -83,9 +61,9 @@ export function ModalUserProg({
   const loadUserRoles = useCallback(async () => {
     setIsLoadingUserRoles(true)
     try {
-      const response = await httpClient.getWithMeta('/user/rol/u', { params: { limit: 1000 } })
-      const userRolesData = response?.data || []
-      setUserRoles(Array.isArray(userRolesData) ? userRolesData : [])
+      const response = await userRolService.getUserRoles()
+      const userRolesData = response.data || []
+      setUserRoles(userRolesData)
     } catch (error: any) {
       const errorMessage = error?.message || "Error al cargar los usuarios"
       toast({
@@ -103,9 +81,9 @@ export function ModalUserProg({
   const loadProgramas = useCallback(async () => {
     setIsLoadingProgramas(true)
     try {
-      const response = await httpClient.getWithMeta('/prog', { params: { limit: 1000 } })
-      const programasData = response?.data || []
-      setProgramas(Array.isArray(programasData) ? programasData : [])
+      const response = await progService.getAll({ page: 1, limit: 1000 })
+      const programasData = response.data?.data || []
+      setProgramas(programasData)
     } catch (error: any) {
       const errorMessage = error?.message || "Error al cargar los programas"
       toast({
@@ -179,14 +157,20 @@ export function ModalUserProg({
 
       if (userProg?.id) {
         // Actualizar asignación existente: PUT /user/prog/{id}
-        await httpClient.put(`/user/prog/${userProg.id}`, dataToSend)
+        const response = await userProgService.update(userProg.id, dataToSend)
+        if (!response.success) {
+          throw new Error((response.error as any)?.message || "No se pudo actualizar la asignación")
+        }
         toast({
           title: "¡Actualización exitosa!",
           description: "La asignación de programa se actualizó correctamente"
         })
       } else {
         // Crear nueva asignación: POST /user/prog
-        await httpClient.post('/user/prog', dataToSend)
+        const response = await userProgService.create(dataToSend)
+        if (!response.success) {
+          throw new Error((response.error as any)?.message || "No se pudo crear la asignación")
+        }
         toast({
           title: "¡Creación exitosa!",
           description: "Programa asignado correctamente al usuario"

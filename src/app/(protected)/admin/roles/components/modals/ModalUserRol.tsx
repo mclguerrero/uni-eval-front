@@ -19,24 +19,11 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { UserCheck, Edit3, Plus, AlertCircle, User, Shield, Loader2, Search, X } from "lucide-react"
-import { userRolService, type UserRol, type Rol } from "@/src/api/services/app/rol.service"
-import { authService } from "@/src/api/services/auth/auth.service"
+import { rolService, userRolService, type UserRol, type Rol } from "@/src/api/services/app/rol.service"
+import { authService, type AuthUserLookup } from "@/src/api/services/auth/auth.service"
 import { useToast } from "@/hooks/use-toast"
-import { httpClient } from "@/src/api/core/HttpClient"
 
-// Interfaz para el usuario buscado
-interface User {
-  user_id: number;
-  user_name: string;
-  user_username: string;
-  user_email: string;
-  rolesAuth: Array<{ id: number; name: string }>;
-  rolesAuthIds: number[];
-  rolesApp: Array<{ id: number; name: string }>;
-  rolesAppIds: number[];
-  roles: string[];
-  rolesIds: number[];
-}
+type User = AuthUserLookup
 
 interface ModalUserRolProps {
   isOpen: boolean
@@ -73,10 +60,9 @@ export function ModalUserRol({
   const loadRoles = useCallback(async () => {
     setIsLoadingRoles(true)
     try {
-      const response = await httpClient.getWithMeta('/rol')
-      // La respuesta tiene estructura: { success, message, data: [...], pagination: {...} }
-      const rolesData = response?.data || []
-      setRoles(Array.isArray(rolesData) ? rolesData : [])
+      const response = await rolService.getAll({ page: 1, limit: 1000 })
+      const rolesData = response.data?.data || []
+      setRoles(rolesData)
     } catch (error: any) {
       const errorMessage = error?.message || "Error al cargar los roles"
       toast({
@@ -123,16 +109,13 @@ export function ModalUserRol({
 
       // Convertir la respuesta a la interfaz User
       const userData: User = {
-        user_id: response.data.user_id,
-        user_name: response.data.user_name,
-        user_username: response.data.user_username,
-        user_email: response.data.user_email,
-        rolesAuth: (response.data as any).rolesAuth || [],
-        rolesAuthIds: (response.data as any).rolesAuthIds || [],
-        rolesApp: (response.data as any).rolesApp || [],
-        rolesAppIds: (response.data as any).rolesAppIds || [],
-        roles: (response.data as any).roles || [],
-        rolesIds: (response.data as any).rolesIds || []
+        ...response.data,
+        rolesAuth: response.data.rolesAuth || [],
+        rolesAuthIds: response.data.rolesAuthIds || [],
+        rolesApp: response.data.rolesApp || [],
+        rolesAppIds: response.data.rolesAppIds || [],
+        roles: response.data.roles || [],
+        rolesIds: response.data.rolesIds || [],
       }
       
       setSearchResults([userData])
@@ -253,14 +236,20 @@ export function ModalUserRol({
 
       if (userRol) {
         // Actualizar asignación de rol existente: PUT /user/rol/{id}
-        await httpClient.put(`/user/rol/${userRol.id}`, dataToSend)
+        const response = await userRolService.update(userRol.id, dataToSend)
+        if (!response.success) {
+          throw new Error((response.error as any)?.message || "No se pudo actualizar el rol de usuario")
+        }
         toast({
           title: "¡Actualización exitosa!",
           description: "El rol de usuario se actualizó correctamente"
         })
       } else {
         // Crear nueva asignación de rol: POST /user/rol
-        await httpClient.post('/user/rol', dataToSend)
+        const response = await userRolService.create(dataToSend)
+        if (!response.success) {
+          throw new Error((response.error as any)?.message || "No se pudo crear el rol de usuario")
+        }
         toast({
           title: "¡Creación exitosa!",
           description: "Nuevo rol de usuario creado correctamente"

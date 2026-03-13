@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, ShieldCheck, Users, Info, Activity } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { cfgTRolService, type RolAsignado } from "@/src/api";
 
@@ -14,8 +14,8 @@ interface RolesConfiguracionViewProps {
     nombre: string;
     origen: string;
   }>;
-  onRoleAdded: () => void;
-  onRoleRemoved: () => void;
+  onRoleAdded: () => void | Promise<void>;
+  onRoleRemoved: () => void | Promise<void>;
   loadingId?: number | null;
 }
 
@@ -47,7 +47,7 @@ export function RolesConfiguracionView({
           title: "Éxito",
           description: "Rol asignado correctamente",
         });
-        onRoleAdded();
+        await Promise.resolve(onRoleAdded());
       } else {
         toast({
           title: "Error",
@@ -67,17 +67,17 @@ export function RolesConfiguracionView({
     }
   };
 
-  const handleEliminarRol = async (rolMixId: number) => {
+  const handleEliminarRol = async (id: number) => {
     try {
       setLoading(true);
-      const response = await cfgTRolService.deleteByConfigAndRole(cfgTId, rolMixId);
+      const response = await cfgTRolService.deleteByConfigAndRole(id);
 
       if (response.success) {
         toast({
           title: "Éxito",
           description: "Rol removido correctamente",
         });
-        onRoleRemoved();
+        await Promise.resolve(onRoleRemoved());
       } else {
         toast({
           title: "Error",
@@ -105,12 +105,12 @@ export function RolesConfiguracionView({
               <ShieldCheck className="h-7 w-7 text-indigo-500" />
            </div>
            <div>
-              <h3 className="text-lg font-black text-slate-900 italic uppercase tracking-tight">Acceso y Privilegios</h3>
+              <h3 className="text-lg font-bold text-slate-900">Acceso y Privilegios</h3>
               <p className="text-xs font-medium text-slate-400 mt-1">Configura qué roles institucionales tienen permiso para ejecutar esta evaluación.</p>
            </div>
         </div>
         <div className="flex gap-4">
-           <Badge className="bg-indigo-50 text-indigo-600 border-none rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest h-10 flex items-center gap-2">
+           <Badge className="bg-indigo-50 text-indigo-600 border-none rounded-xl px-4 py-2 text-xs font-semibold h-10 flex items-center gap-2">
              <Users className="h-3 w-3" />
              {rolesAsignados.length} Roles con Permiso
            </Badge>
@@ -122,14 +122,14 @@ export function RolesConfiguracionView({
         <div className="space-y-6">
            <div className="flex items-center gap-2 px-4">
               <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mt-0.5">Control de Autorización</span>
+                <span className="text-xs font-medium text-slate-400 leading-none mt-0.5">Control de Autorización</span>
            </div>
            
            <div className="space-y-3">
              {rolesAsignados.length === 0 ? (
                <div className="bg-slate-50/50 border border-slate-100 border-dashed rounded-[2rem] p-12 text-center">
                  <Info className="h-10 w-10 text-slate-200 mx-auto mb-4" />
-                 <p className="text-slate-400 font-medium text-xs italic italic">No hay roles autorizados para esta configuración.</p>
+                <p className="text-slate-400 font-medium text-xs italic">No hay roles autorizados para esta configuración.</p>
                </div>
              ) : (
                rolesAsignados.map((rolAsignado) => (
@@ -143,15 +143,15 @@ export function RolesConfiguracionView({
                             <ShieldCheck className="h-5 w-5" />
                          </div>
                          <div className="min-w-0">
-                            <h4 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">{rolAsignado.nombre}</h4>
-                            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-tighter mt-0.5">Sistema: {rolAsignado.origen}</p>
+                            <h4 className="font-bold text-slate-900 text-sm truncate">{rolAsignado.nombre}</h4>
+                            <p className="text-xs font-medium text-slate-400 mt-0.5">Sistema: {rolAsignado.origen}</p>
                          </div>
                       </div>
                       <Button
                         size="icon"
                         variant="ghost"
-                        onClick={() => handleEliminarRol(rolAsignado.rol_mix_id)}
-                        disabled={loading || loadingId === rolAsignado.rol_mix_id}
+                        onClick={() => handleEliminarRol(rolAsignado.id)}
+                        disabled={loading || loadingId === rolAsignado.id}
                         className="h-9 w-9 rounded-xl hover:bg-rose-50 hover:text-rose-600 group-hover:opacity-100 opacity-0 transition-all duration-300"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -167,14 +167,14 @@ export function RolesConfiguracionView({
         <div className="space-y-6">
            <div className="flex items-center gap-2 px-4">
               <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mt-0.5">Roles del Directorio</span>
+                <span className="text-xs font-medium text-slate-400 leading-none mt-0.5">Roles del Directorio</span>
            </div>
 
            <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
              {rolesNoAsignados.length === 0 ? (
                <div className="bg-slate-50/50 border border-slate-100 border-dashed rounded-[2rem] p-12 text-center">
                  <Activity className="h-10 w-10 text-slate-200 mx-auto mb-4" />
-                 <p className="text-slate-400 font-medium text-xs italic italic">Se han asignado todos los roles disponibles.</p>
+                <p className="text-slate-400 font-medium text-xs italic">Se han asignado todos los roles disponibles.</p>
                </div>
              ) : (
                <div className="grid grid-cols-1 gap-2">
@@ -190,8 +190,8 @@ export function RolesConfiguracionView({
                            <Plus className="h-5 w-5" />
                         </div>
                         <div className="min-w-0">
-                           <h4 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight group-hover:text-indigo-600">{rol.nombre}</h4>
-                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-0.5 block">{rol.origen}</span>
+                             <h4 className="font-bold text-slate-900 text-sm truncate group-hover:text-indigo-600">{rol.nombre}</h4>
+                             <span className="text-xs font-medium text-slate-400 mt-0.5 block">{rol.origen}</span>
                         </div>
                      </div>
                      <Badge className="bg-white text-slate-400 group-hover:bg-indigo-600 group-hover:text-white border border-slate-200 group-hover:border-indigo-600 transition-all rounded-lg text-[8px] font-black h-5 px-2">

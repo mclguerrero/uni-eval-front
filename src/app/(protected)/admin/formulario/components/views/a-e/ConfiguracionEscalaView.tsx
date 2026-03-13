@@ -17,7 +17,7 @@ import { ModalEditarConfiguracionEscala } from "./ModalEditarConfiguracionEscala
 interface ConfiguracionEscalaViewProps {
   configuraciones: CfgEItem[];
   setModalConfiguracionEscala: (value: any) => void;
-  onConfigUpdated?: () => void;
+  onConfigUpdated?: () => void | Promise<void>;
 }
 
 export function ConfiguracionEscalaView({
@@ -39,7 +39,7 @@ export function ConfiguracionEscalaView({
           title: "Estado actualizado",
           description: `La escala "${config.escala?.nombre || ''}" fue ${!config.es_activo ? 'activada' : 'desactivada'}.`,
         });
-        onConfigUpdated?.();
+        await Promise.resolve(onConfigUpdated?.());
       } else {
         throw new Error(response.error?.message || "Error al actualizar");
       }
@@ -67,7 +67,7 @@ export function ConfiguracionEscalaView({
           title: "Configuración eliminada",
           description: "La escala fue removida de esta configuración.",
         });
-        onConfigUpdated?.();
+        await Promise.resolve(onConfigUpdated?.());
       } else {
         throw new Error(response.error?.message || "No se pudo eliminar");
       }
@@ -90,13 +90,13 @@ export function ConfiguracionEscalaView({
               <Sliders className="h-6 w-6 text-indigo-500" />
            </div>
            <div>
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight italic">Rango de Valoración</h3>
+              <h3 className="text-sm font-bold text-slate-900 tracking-tight">Rango de Valoración</h3>
               <p className="text-[11px] font-medium text-slate-400">Determina las opciones de respuesta y sus pesos respectivos.</p>
            </div>
         </div>
         <Button 
           onClick={() => setModalConfiguracionEscala({ isOpen: true })}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl px-6 h-11 font-bold text-xs uppercase tracking-widest shadow-lg shadow-indigo-100 transition-all active:scale-95 flex items-center gap-2"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl px-6 h-11 font-semibold text-sm shadow-lg shadow-indigo-100 transition-all active:scale-95 flex items-center gap-2"
         >
           <Plus className="h-4 w-4" />
           Añadir Escala
@@ -120,12 +120,12 @@ export function ConfiguracionEscalaView({
                   </div>
                   <div className="flex-1 min-w-0 text-left">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <h4 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">
+                      <h4 className="font-bold text-slate-900 text-sm truncate">
                         {config.escala
                           ? `${config.escala.sigla} - ${config.escala.nombre}`
                           : `Escala #${config.escala_id}`}
                       </h4>
-                      <Badge className={`border-none rounded-md text-[8px] font-black uppercase tracking-tighter h-4 ${
+                      <Badge className={`border-none rounded-md text-xs font-semibold h-4 ${
                         config.es_activo 
                           ? 'bg-emerald-50 text-emerald-600' 
                           : 'bg-slate-100 text-slate-400'
@@ -134,9 +134,9 @@ export function ConfiguracionEscalaView({
                       </Badge>
                     </div>
                     <div className="flex items-center gap-2">
-                       <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Prioridad {config.orden}</span>
+                         <span className="text-xs font-medium text-slate-300">Prioridad {config.orden}</span>
                        <div className="h-1 w-1 rounded-full bg-slate-200" />
-                       <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-tighter">Valoración Cuantitativa</span>
+                         <span className="text-xs font-medium text-indigo-400">Valoración Cuantitativa</span>
                     </div>
                   </div>
                 </div>

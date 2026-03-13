@@ -17,7 +17,7 @@ import { ModalEditarConfiguracionAspecto } from "./ModalEditarConfiguracionAspec
 interface ConfiguracionAspectoViewProps {
   configuraciones: CfgAItem[];
   setModalConfiguracionAspecto: (value: any) => void;
-  onConfigUpdated?: () => void;
+  onConfigUpdated?: () => void | Promise<void>;
 }
 
 export function ConfiguracionAspectoView({
@@ -39,7 +39,7 @@ export function ConfiguracionAspectoView({
           title: "Estado actualizado",
           description: `El aspecto "${config.aspecto?.nombre || ''}" fue ${!config.es_activo ? 'activado' : 'desactivado'}.`,
         });
-        onConfigUpdated?.();
+        await Promise.resolve(onConfigUpdated?.());
       } else {
         throw new Error(response.error?.message || "Error al actualizar");
       }
@@ -67,7 +67,7 @@ export function ConfiguracionAspectoView({
           title: "Configuración eliminada",
           description: "El aspecto fue removido de esta configuración.",
         });
-        onConfigUpdated?.();
+        await Promise.resolve(onConfigUpdated?.());
       } else {
         throw new Error(response.error?.message || "No se pudo eliminar");
       }
@@ -90,13 +90,13 @@ export function ConfiguracionAspectoView({
               <HelpCircle className="h-6 w-6 text-indigo-500" />
            </div>
            <div>
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight italic">Inventario de Aspectos</h3>
+              <h3 className="text-sm font-bold text-slate-900 tracking-tight">Inventario de Aspectos</h3>
               <p className="text-[11px] font-medium text-slate-400">Define qué preguntas o criterios forman parte de esta evaluación.</p>
            </div>
         </div>
         <Button 
           onClick={() => setModalConfiguracionAspecto({ isOpen: true })}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl px-6 h-11 font-bold text-xs uppercase tracking-widest shadow-lg shadow-indigo-100 transition-all active:scale-95 flex items-center gap-2"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl px-6 h-11 font-semibold text-sm shadow-lg shadow-indigo-100 transition-all active:scale-95 flex items-center gap-2"
         >
           <Plus className="h-4 w-4" />
           Añadir Aspecto
@@ -120,10 +120,10 @@ export function ConfiguracionAspectoView({
                   </div>
                   <div className="flex-1 min-w-0 text-left">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <h4 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">
+                      <h4 className="font-bold text-slate-900 text-sm truncate">
                         {config.aspecto?.nombre ?? `Aspecto #${config.aspecto_id}`}
                       </h4>
-                      <Badge className={`border-none rounded-md text-[8px] font-black uppercase tracking-tighter h-4 ${
+                      <Badge className={`border-none rounded-md text-xs font-semibold h-4 ${
                         config.es_activo 
                           ? 'bg-emerald-50 text-emerald-600' 
                           : 'bg-slate-100 text-slate-400'

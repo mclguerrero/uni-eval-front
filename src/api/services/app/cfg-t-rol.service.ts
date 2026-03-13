@@ -26,6 +26,7 @@ export interface CfgTRol {
 }
 
 export interface RolAsignado {
+  id: number;
   rol_mix_id: number;
   rol_origen_id: number;
   nombre: string;
@@ -73,17 +74,12 @@ class CfgTRolService extends BaseService<CfgTRol, CreateCfgTRolInput, UpdateCfgT
   }
 
   /**
-   * Eliminar rol de una configuración por cfg_t_id y rol_mix_id
-   * DELETE /cfg/t/rol?cfg_t_id={cfgTId}&rol_mix_id={rolMixId}
+   * Eliminar rol por ID de la relación cfg_t_rol
+   * DELETE /cfg/t/rol/{id}
    */
-  async deleteByConfigAndRole(cfgTId: number, rolMixId: number): Promise<ApiResponse<void>> {
+  async deleteByConfigAndRole(id: number): Promise<ApiResponse<void>> {
     return this.executeAsync(
-      () => httpClient.delete(`/cfg/t/rol`, { 
-        params: { 
-          cfg_t_id: cfgTId,
-          rol_mix_id: rolMixId 
-        } 
-      }),
+      () => httpClient.delete(`/cfg/t/rol/${id}`),
       undefined
     );
   }

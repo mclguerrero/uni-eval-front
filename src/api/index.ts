@@ -56,7 +56,7 @@ export type {
 // SERVICES (AUTH)
 // ========================
 export { authService } from './services/auth/auth.service';
-export type { LoginRequest, LoginResponse, AuthResponse, UserProfile } from './services/auth/auth.service';
+export type { LoginRequest, LoginResponse, AuthResponse, UserProfile, AuthUserLookup } from './services/auth/auth.service';
 
 export { rolService } from './services/auth/rol.service';
 export type { 
@@ -184,8 +184,11 @@ export {
 } from './services/app/rol.service';
 export type {
   UserRol,
+  UserRolWithDatalogin,
   Prog,
   UserProg,
+  UserProgWithDatalogin,
+  DataloginInfo,
   CreateUserRolInput,
   UpdateUserRolInput,
   CreateProgInput,

@@ -24,6 +24,7 @@ import AnalisisAspectos from "@/src/app/(protected)/admin/components/analisis-as
 import MetricCards from "@/src/app/(protected)/admin/components/metric-cards";
 import RankingDocentes from "@/src/app/(protected)/admin/components/ranking-docentes";
 import { apiClient } from "@/src/api/core/apiClient";
+import type { FiltrosState } from "../types";
 
 // Memoizar el componente de Filtros para evitar re-renders innecesarios
 const FiltersMemo = memo(Filtros);
@@ -33,15 +34,6 @@ interface DashboardDataState {
   docentesRanking: RankingItem[];
   programas: ProgramaSummary[];
   estadisticasProgramas: ProgramaSummary[];
-}
-
-interface FiltrosState {
-  configuracionSeleccionada: number | null;
-  semestreSeleccionado: string;
-  periodoSeleccionado: string;
-  programaSeleccionado: string;
-  grupoSeleccionado: string;
-  sedeSeleccionada: string;
 }
 
 export default function AdminDashboard() {
@@ -199,7 +191,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-slate-50/50">
       {/* Header Premium - Light Style */}
       <header className="sticky top-0 z-40 bg-white/80 border-b border-slate-100 shadow-sm backdrop-blur-xl">
         <div className="mx-auto h-20 w-full max-w-[1680px] px-6 lg:px-8 xl:px-10 flex justify-between items-center">
@@ -208,8 +200,8 @@ export default function AdminDashboard() {
               <LayoutDashboard className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <h1 className="text-xl font-black text-slate-900 italic tracking-tight uppercase">Panel de Inteligencia</h1>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Monitoreo Institucional</p>
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight">Panel de Inteligencia</h1>
+              <p className="text-xs font-medium text-muted-foreground">Monitoreo Institucional</p>
             </div>
           </div>
 
@@ -217,7 +209,7 @@ export default function AdminDashboard() {
             <Button
               variant="outline"
               size="sm"
-              className="bg-white border-slate-200 text-slate-900 hover:bg-slate-50 rounded-xl font-bold text-[11px] uppercase tracking-widest px-4 h-9 shadow-sm"
+              className="bg-white border-slate-200 text-slate-900 hover:bg-slate-50 rounded-xl font-medium text-sm px-4 h-9 shadow-sm"
               onClick={handleBackup}
               disabled={loadingBackup}
             >
@@ -257,7 +249,7 @@ export default function AdminDashboard() {
               Para visualizar la arquitectura de datos, por favor seleccione un modelo de evaluación en el panel de filtros superior.
             </p>
             <div className="flex justify-center gap-4">
-              <div className="flex items-center gap-2 text-[10px] font-black text-slate-200 uppercase tracking-widest">
+              <div className="flex items-center gap-2 text-xs font-medium text-slate-200">
                 <div className="h-1.5 w-1.5 rounded-full bg-blue-500/50 animate-pulse"></div>
                 Esperando Input
               </div>
@@ -321,7 +313,7 @@ export default function AdminDashboard() {
             <section className="space-y-6">
               <div className="flex items-center gap-3 px-4">
                 <TrendingUp className="h-4 w-4 text-blue-600" />
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] italic leading-none">Puntos de Control Estratégicos</h3>
+                <h3 className="text-xs font-medium text-muted-foreground leading-none">Puntos de Control Estratégicos</h3>
               </div>
               <MetricCards data={dashboardData.resumenGenerales} />
             </section>
@@ -331,7 +323,7 @@ export default function AdminDashboard() {
               <div className="space-y-6">
                 <div className="flex items-center gap-3 px-4">
                   <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] italic leading-none">Distribución por Programas</h3>
+                  <h3 className="text-xs font-medium text-muted-foreground leading-none">Distribución por Programas</h3>
                 </div>
                 <GraficaPrograma
                   datos={dashboardData.estadisticasProgramas.length > 0 ? dashboardData.estadisticasProgramas : undefined}
@@ -345,7 +337,7 @@ export default function AdminDashboard() {
               <div className="space-y-6">
                 <div className="flex items-center gap-3 px-4">
                   <AlertCircle className="h-4 w-4 text-amber-600" />
-                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] italic leading-none">Análisis de Atributos Críticos</h3>
+                  <h3 className="text-xs font-medium text-muted-foreground leading-none">Análisis de Atributos Críticos</h3>
                 </div>
                 <AnalisisAspectos filters={metricFilters} loading={loading} />
               </div>
@@ -355,7 +347,7 @@ export default function AdminDashboard() {
             <section className="space-y-6">
               <div className="flex items-center gap-3 px-4">
                 <Clock className="h-4 w-4 text-slate-900" />
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] italic leading-none">Liderazgo y Proyección Académica</h3>
+                <h3 className="text-xs font-medium text-muted-foreground leading-none">Liderazgo y Proyección Académica</h3>
               </div>
               <RankingDocentes docentes={dashboardData.docentesRanking} loading={loading} filtros={filtros} />
             </section>
