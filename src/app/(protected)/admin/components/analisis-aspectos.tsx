@@ -27,6 +27,30 @@ interface AnalisisAspectosProps {
   mostrar?: boolean;
 }
 
+const toNumberOrNull = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const normalizeAspectosResponse = (response: any): DocenteAspectosMetrics | null => {
+  const payload = response?.data?.data || response?.data || response;
+  if (!payload || typeof payload !== "object") return null;
+
+  const evaluacion = payload.evaluacion_estudiantes || payload.evaluacionEstudiantes;
+  const autoevaluacion = payload.autoevaluacion_docente || payload.autoevaluacionDocente;
+  const resultado = payload.resultado_final || payload.resultadoFinal;
+
+  if (!evaluacion || !autoevaluacion || !resultado) return null;
+
+  return {
+    ...payload,
+    evaluacion_estudiantes: evaluacion,
+    autoevaluacion_docente: autoevaluacion,
+    resultado_final: resultado,
+  } as DocenteAspectosMetrics;
+};
+
 export default function AnalisisAspectos({
   filters,
   loading = false,
@@ -70,10 +94,11 @@ export default function AnalisisAspectos({
         ...filters,
       });
 
-      const data = (response as any).data || response;
-      setAspectosAgregados(data);
+      const normalized = normalizeAspectosResponse(response);
+      setAspectosAgregados(normalized);
     } catch (error) {
       console.error("Error al obtener aspectos agregados:", error);
+      setAspectosAgregados(null);
     } finally {
       setAspectosAgregadosLoading(false);
     }
@@ -120,6 +145,10 @@ export default function AnalisisAspectos({
   const evaluacionEstudiantes = aspectosAgregados?.evaluacion_estudiantes;
   const autoevaluacionDocente = aspectosAgregados?.autoevaluacion_docente;
   const resultadoFinal = aspectosAgregados?.resultado_final;
+  const escalaMaxima = aspectosAgregados?.escala_maxima ?? 5;
+  const pesoEstudiantes = toNumberOrNull(evaluacionEstudiantes?.peso) ?? 0.8;
+  const pesoDocente = toNumberOrNull(autoevaluacionDocente?.peso) ?? 0.2;
+  const autoevaluacionesRealizadas = (autoevaluacionDocente?.total_respuestas ?? 0) > 0 ? 1 : 0;
 
   // Preparar datos unificados para comparación
   const uniqueNames = Array.from(new Set([
@@ -131,8 +160,8 @@ export default function AnalisisAspectos({
     const est = evaluacionEstudiantes?.aspectos?.find(a => a.nombre === name);
     const auto = autoevaluacionDocente?.aspectos?.find(a => a.nombre === name);
 
-    const estPromedio = est?.promedio ?? (est?.suma && est?.total_respuestas ? est.suma / est.total_respuestas : null);
-    const autoPromedio = auto?.promedio ?? (auto?.suma && auto?.total_respuestas ? auto.suma / auto.total_respuestas : null);
+    const estPromedio = toNumberOrNull(est?.promedio) ?? (est && est.total_respuestas > 0 ? est.suma / est.total_respuestas : null);
+    const autoPromedio = toNumberOrNull(auto?.promedio) ?? (auto && auto.total_respuestas > 0 ? auto.suma / auto.total_respuestas : null);
 
     return {
       name,
@@ -148,7 +177,7 @@ export default function AnalisisAspectos({
     subject: d.name,
     Estudiantes: d.est,
     Docente: d.auto,
-    fullMark: 5
+    fullMark: escalaMaxima
   }));
 
   // Custom Tooltip minimalista
@@ -172,6 +201,10 @@ export default function AnalisisAspectos({
               </div>
             );
           })}
+          <div className="mt-1.5 pt-1.5 border-t border-slate-100 text-[11px] text-slate-500 space-y-0.5">
+            <p>Estudiantes (peso): {(pesoEstudiantes * 100).toFixed(0)}%</p>
+            <p>Autoevaluación (peso): {(pesoDocente * 100).toFixed(0)}%</p>
+          </div>
         </div>
       );
     }
@@ -214,14 +247,15 @@ export default function AnalisisAspectos({
                   Estudiantes
                 </p>
                 <div className="flex items-baseline gap-1 mb-3">
-                  <span className={`text-4xl font-semibold ${getPromedioColor(evaluacionEstudiantes.promedio_general || 0)}`}>
-                    {(evaluacionEstudiantes.promedio_general || 0).toFixed(2)}
+                  <span className={`text-4xl font-semibold ${getPromedioColor(toNumberOrNull(evaluacionEstudiantes.promedio_general) ?? 0)}`}>
+                    {(toNumberOrNull(evaluacionEstudiantes.promedio_general) ?? 0).toFixed(2)}
                   </span>
-                  <span className="text-slate-400 text-base">/5.0</span>
+                  <span className="text-slate-400 text-base">/{escalaMaxima.toFixed(1)}</span>
                 </div>
                 <div className="space-y-1 text-sm text-slate-600">
                   <p><span className="font-medium text-slate-700">Respuestas:</span> {evaluacionEstudiantes.total_respuestas}</p>
-                  <p><span className="font-medium text-slate-700">Ponderado:</span> {(evaluacionEstudiantes.ponderado || 0).toFixed(2)}</p>
+                  <p><span className="font-medium text-slate-700">Peso:</span> {(pesoEstudiantes * 100).toFixed(0)}%</p>
+                  <p><span className="font-medium text-slate-700">Ponderado:</span> {(toNumberOrNull(evaluacionEstudiantes.ponderado) ?? 0).toFixed(2)}</p>
                 </div>
               </div>
 
@@ -231,14 +265,15 @@ export default function AnalisisAspectos({
                   Docente
                 </p>
                 <div className="flex items-baseline gap-1 mb-3">
-                  <span className={`text-4xl font-semibold ${getPromedioColor(autoevaluacionDocente.promedio_general || 0)}`}>
-                    {(autoevaluacionDocente.promedio_general || 0).toFixed(2)}
+                  <span className={`text-4xl font-semibold ${getPromedioColor(toNumberOrNull(autoevaluacionDocente.promedio_general) ?? 0)}`}>
+                    {(toNumberOrNull(autoevaluacionDocente.promedio_general) ?? 0).toFixed(2)}
                   </span>
-                  <span className="text-slate-400 text-base">/5.0</span>
+                  <span className="text-slate-400 text-base">/{escalaMaxima.toFixed(1)}</span>
                 </div>
                 <div className="space-y-1 text-sm text-slate-600">
-                  <p><span className="font-medium text-slate-700">Respuestas:</span> {autoevaluacionDocente.total_respuestas}</p>
-                  <p><span className="font-medium text-slate-700">Ponderado:</span> {(autoevaluacionDocente.ponderado || 0).toFixed(2)}</p>
+                  <p><span className="font-medium text-slate-700">Respuestas:</span> {autoevaluacionesRealizadas}</p>
+                  <p><span className="font-medium text-slate-700">Peso:</span> {(pesoDocente * 100).toFixed(0)}%</p>
+                  <p><span className="font-medium text-slate-700">Ponderado:</span> {(toNumberOrNull(autoevaluacionDocente.ponderado) ?? 0).toFixed(2)}</p>
                 </div>
               </div>
 
@@ -248,16 +283,22 @@ export default function AnalisisAspectos({
                   Nota Final
                 </p>
                 <div className="flex items-baseline gap-1 mb-3">
-                  <span className={`text-4xl font-semibold ${getPromedioColor(resultadoFinal?.nota_final_ponderada || 0)}`}>
-                    {(resultadoFinal?.nota_final_ponderada || 0).toFixed(2)}
+                  <span className={`text-4xl font-semibold ${getPromedioColor(toNumberOrNull(resultadoFinal?.nota_final_ponderada) ?? 0)}`}>
+                    {(toNumberOrNull(resultadoFinal?.nota_final_ponderada) ?? 0).toFixed(2)}
                   </span>
-                  <span className="text-slate-400 text-base">/5.0</span>
+                  <span className="text-slate-400 text-base">/{escalaMaxima.toFixed(1)}</span>
                 </div>
                 <div className="text-sm">
                   <p className="text-slate-600">
+                    <span className="font-medium text-slate-700">Nota final ponderada:</span>{" "}
+                    <span className="font-semibold text-slate-900">
+                      {(toNumberOrNull(resultadoFinal?.nota_final_ponderada) ?? 0).toFixed(2)}
+                    </span>
+                  </p>
+                  <p className="text-slate-600 mt-1">
                     <span className="font-medium text-slate-700">Diferencia:</span>{" "}
-                    <span className={getDiferenciaBadgeClass(calcularDiferencia(evaluacionEstudiantes.promedio_general || 0, autoevaluacionDocente.promedio_general || 0))}>
-                      {calcularDiferencia(evaluacionEstudiantes.promedio_general || 0, autoevaluacionDocente.promedio_general || 0).toFixed(2)}
+                    <span className={getDiferenciaBadgeClass(calcularDiferencia(toNumberOrNull(evaluacionEstudiantes.promedio_general) ?? 0, toNumberOrNull(autoevaluacionDocente.promedio_general) ?? 0))}>
+                      {calcularDiferencia(toNumberOrNull(evaluacionEstudiantes.promedio_general) ?? 0, toNumberOrNull(autoevaluacionDocente.promedio_general) ?? 0).toFixed(2)}
                     </span>
                   </p>
                 </div>
@@ -294,7 +335,7 @@ export default function AnalisisAspectos({
                         />
                         <PolarRadiusAxis 
                           angle={90} 
-                          domain={[0, 5]}
+                          domain={[0, escalaMaxima]}
                           tick={{ fill: '#cbd5e1', fontSize: 12 }}
                           axisLine={{ stroke: '#e2e8f0', strokeWidth: 0.5 }}
                         />
@@ -305,6 +346,8 @@ export default function AnalisisAspectos({
                           fill="#4f46e5"
                           fillOpacity={0.1}
                           strokeWidth={2}
+                          dot={{ r: 3, strokeWidth: 1 }}
+                          activeDot={{ r: 5 }}
                           connectNulls
                           hide={!visibleSeries.est}
                         />
@@ -315,6 +358,8 @@ export default function AnalisisAspectos({
                           fill="#64748b"
                           fillOpacity={0.1}
                           strokeWidth={2}
+                          dot={{ r: 3, strokeWidth: 1 }}
+                          activeDot={{ r: 5 }}
                           connectNulls
                           hide={!visibleSeries.auto}
                         />

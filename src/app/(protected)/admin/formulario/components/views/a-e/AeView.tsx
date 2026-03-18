@@ -56,6 +56,7 @@ export function AeView({
   setModalAe,
   onConfigUpdated,
 }: AeViewProps) {
+  type ToggleField = "es_cmt" | "es_cmt_oblig";
   const { toast } = useToast();
   const [expandedAspecto, setExpandedAspecto] = useState<number | null>(
     aspectosConEscalas.length > 0 ? aspectosConEscalas[0].id : null
@@ -69,6 +70,7 @@ export function AeView({
   const [isUpdatingAspecto, setIsUpdatingAspecto] = useState(false);
   const [aspectosGlobales, setAspectosGlobales] = useState<CfgAItemEnriquecido[]>([]);
   const [isLoadingAspectos, setIsLoadingAspectos] = useState(false);
+  const [togglingFieldKey, setTogglingFieldKey] = useState<string | null>(null);
 
   useEffect(() => {
     loadAspectosGlobales();
@@ -119,6 +121,69 @@ export function AeView({
 
   const toggleAspecto = (id: number) => {
     setExpandedAspecto(expandedAspecto === id ? null : id);
+  };
+
+  const isToggling = (aspectoId: number, field: ToggleField) =>
+    togglingFieldKey === `${aspectoId}-${field}`;
+
+  const handleToggleAspectoField = async (aspecto: AspectoConEscalas, field: ToggleField) => {
+    if (field === "es_cmt_oblig" && !aspecto.es_cmt) {
+      toast({
+        variant: "destructive",
+        title: "Acción no permitida",
+        description: "Debes activar comentarios antes de marcarlo como obligatorio",
+      });
+      return;
+    }
+
+    const aeIds = aspecto.opciones
+      .map((opcion) => opcion.a_e_id)
+      .filter((id): id is number => typeof id === "number");
+
+    if (aeIds.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Sin registros",
+        description: "No se encontraron relaciones para actualizar",
+      });
+      return;
+    }
+
+    setTogglingFieldKey(`${aspecto.id}-${field}`);
+    try {
+      if (field === "es_cmt" && aspecto.es_cmt && aspecto.es_cmt_oblig) {
+        await Promise.all(aeIds.map((id) => aEService.toggleField(id, "es_cmt_oblig")));
+      }
+
+      await Promise.all(aeIds.map((id) => aEService.toggleField(id, field)));
+
+      const statusActualizado =
+        field === "es_cmt"
+          ? !aspecto.es_cmt
+            ? "activados"
+            : "desactivados"
+          : !aspecto.es_cmt_oblig
+          ? "activados"
+          : "desactivados";
+
+      toast({
+        title: "Configuración actualizada",
+        description:
+          field === "es_cmt"
+            ? `Comentarios ${statusActualizado} para este aspecto`
+            : `Obligatoriedad de comentarios ${statusActualizado}`,
+      });
+
+      await Promise.resolve(onConfigUpdated?.());
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error?.message || "No se pudo actualizar el campo",
+      });
+    } finally {
+      setTogglingFieldKey(null);
+    }
   };
 
   const handleDeleteOpcion = async () => {
@@ -301,6 +366,41 @@ export function AeView({
                         {aspecto.es_cmt && <Badge className="bg-blue-50 text-blue-600 border-none rounded-md text-xs font-semibold h-4">Comentarios</Badge>}
                         {aspecto.es_cmt_oblig && <Badge className="bg-rose-50 text-rose-600 border-none rounded-md text-xs font-semibold h-4">Req. Feedback</Badge>}
                       </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      <Button
+                        size="sm"
+                        variant={aspecto.es_cmt ? "outline" : "default"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleAspectoField(aspecto, "es_cmt");
+                        }}
+                        disabled={isToggling(aspecto.id, "es_cmt") || isToggling(aspecto.id, "es_cmt_oblig")}
+                        className="h-7 rounded-xl text-[11px] px-3 font-semibold"
+                      >
+                        {isToggling(aspecto.id, "es_cmt")
+                          ? "Procesando..."
+                          : aspecto.es_cmt
+                          ? "Desactivar comentarios"
+                          : "Activar comentarios"}
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant={aspecto.es_cmt_oblig ? "outline" : "default"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleAspectoField(aspecto, "es_cmt_oblig");
+                        }}
+                        disabled={!aspecto.es_cmt || isToggling(aspecto.id, "es_cmt") || isToggling(aspecto.id, "es_cmt_oblig")}
+                        className="h-7 rounded-xl text-[11px] px-3 font-semibold"
+                      >
+                        {isToggling(aspecto.id, "es_cmt_oblig")
+                          ? "Procesando..."
+                          : aspecto.es_cmt_oblig
+                          ? "Desactivar obligatorio"
+                          : "Activar obligatorio"}
+                      </Button>
                     </div>
                     {aspecto.descripcion && (
                       <p className="text-[11px] font-medium text-slate-400 italic truncate">
