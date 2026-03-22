@@ -155,6 +155,9 @@ export default function MetricCards({ data }: MetricCardsProps) {
     0
   )
 
+  const hasStudentMetrics = totalEstudiantes > 0 || estudiantesPendientes > 0
+  const hasTeacherMetrics = totalDocentes > 0 || docentesPendientes > 0
+
   const metrics: MetricCardProps[] = [
     {
       title: 'Evaluaciones',
@@ -163,24 +166,30 @@ export default function MetricCards({ data }: MetricCardsProps) {
       total: totalEvaluaciones,
       pending: totalPendientesEvaluaciones,
       accentClassName: 'bg-indigo-500'
-    },
-    {
+    }
+  ]
+
+  if (hasStudentMetrics) {
+    metrics.push({
       title: 'Población Estudiantil',
       icon: Users,
       completed: estudiantesCompletados,
       total: totalEstudiantes,
       pending: estudiantesPendientes,
       accentClassName: 'bg-blue-500'
-    },
-    {
+    })
+  }
+
+  if (hasTeacherMetrics) {
+    metrics.push({
       title: 'Cátedra Docente',
       icon: UserCheck,
       completed: docentesCompletados,
       total: totalDocentes,
       pending: docentesPendientes,
       accentClassName: 'bg-emerald-500'
-    }
-  ]
+    })
+  }
 
   return (
     <div className='grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3'>

@@ -38,10 +38,23 @@ const normalizeAspectosResponse = (response: any): DocenteAspectosMetrics | null
   if (!payload || typeof payload !== "object") return null;
 
   const evaluacion = payload.evaluacion_estudiantes || payload.evaluacionEstudiantes;
-  const autoevaluacion = payload.autoevaluacion_docente || payload.autoevaluacionDocente;
-  const resultado = payload.resultado_final || payload.resultadoFinal;
+  if (!evaluacion) return null;
 
-  if (!evaluacion || !autoevaluacion || !resultado) return null;
+  const autoevaluacion = payload.autoevaluacion_docente || payload.autoevaluacionDocente || {
+    peso: 0,
+    suma_total: 0,
+    total_respuestas: 0,
+    promedio_general: 0,
+    ponderado: 0,
+    aspectos: []
+  };
+
+  const resultado = payload.resultado_final || payload.resultadoFinal || {
+    nota_final_ponderada:
+      toNumberOrNull(evaluacion?.ponderado) ??
+      toNumberOrNull(evaluacion?.promedio_general) ??
+      null
+  };
 
   return {
     ...payload,
@@ -146,9 +159,15 @@ export default function AnalisisAspectos({
   const autoevaluacionDocente = aspectosAgregados?.autoevaluacion_docente;
   const resultadoFinal = aspectosAgregados?.resultado_final;
   const escalaMaxima = aspectosAgregados?.escala_maxima ?? 5;
-  const pesoEstudiantes = toNumberOrNull(evaluacionEstudiantes?.peso) ?? 0.8;
-  const pesoDocente = toNumberOrNull(autoevaluacionDocente?.peso) ?? 0.2;
+  const pesoEstudiantes = toNumberOrNull(evaluacionEstudiantes?.peso) ?? 1;
+  const pesoDocente = toNumberOrNull(autoevaluacionDocente?.peso) ?? 0;
   const autoevaluacionesRealizadas = (autoevaluacionDocente?.total_respuestas ?? 0) > 0 ? 1 : 0;
+  const isEncuestaMode = Boolean(
+    aspectosAgregados?.nota_final_encuesta !== undefined ||
+    pesoDocente === 0 ||
+    ((autoevaluacionDocente?.total_respuestas ?? 0) === 0 &&
+      (autoevaluacionDocente?.aspectos?.length ?? 0) === 0)
+  );
 
   // Preparar datos unificados para comparación
   const uniqueNames = Array.from(new Set([
@@ -202,8 +221,14 @@ export default function AnalisisAspectos({
             );
           })}
           <div className="mt-1.5 pt-1.5 border-t border-slate-100 text-[11px] text-slate-500 space-y-0.5">
-            <p>Estudiantes (peso): {(pesoEstudiantes * 100).toFixed(0)}%</p>
-            <p>Autoevaluación (peso): {(pesoDocente * 100).toFixed(0)}%</p>
+            {isEncuestaMode ? (
+              <p>Encuesta (peso): 100%</p>
+            ) : (
+              <>
+                <p>Estudiantes (peso): {(pesoEstudiantes * 100).toFixed(0)}%</p>
+                <p>Autoevaluación (peso): {(pesoDocente * 100).toFixed(0)}%</p>
+              </>
+            )}
           </div>
         </div>
       );
@@ -229,7 +254,9 @@ export default function AnalisisAspectos({
                 Análisis de Aspectos Evaluados
               </CardTitle>
               <CardDescription className="text-slate-500 text-sm font-normal mt-0.5">
-                Comparación entre evaluación de estudiantes y autoevaluación docente
+                {isEncuestaMode
+                  ? 'Resultados agregados de encuesta por aspecto'
+                  : 'Comparación entre evaluación de estudiantes y autoevaluación docente'}
               </CardDescription>
             </div>
           </div>
@@ -240,11 +267,11 @@ export default function AnalisisAspectos({
         {aspectosAgregados && evaluacionEstudiantes && autoevaluacionDocente && combinedData.length > 0 ? (
           <div className="space-y-6">
             {/* KPI Metrics - Resumen ejecutivo minimalista */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className={`grid gap-4 ${isEncuestaMode ? 'grid-cols-2' : 'grid-cols-3'}`}>
               {/* Evaluación Estudiantes */}
               <div className="p-4 rounded-lg bg-white border border-slate-200 hover:border-slate-300 transition-colors">
                 <p className="text-sm font-medium text-slate-500 mb-2">
-                  Estudiantes
+                  {isEncuestaMode ? 'Encuesta' : 'Estudiantes'}
                 </p>
                 <div className="flex items-baseline gap-1 mb-3">
                   <span className={`text-4xl font-semibold ${getPromedioColor(toNumberOrNull(evaluacionEstudiantes.promedio_general) ?? 0)}`}>
@@ -254,33 +281,35 @@ export default function AnalisisAspectos({
                 </div>
                 <div className="space-y-1 text-sm text-slate-600">
                   <p><span className="font-medium text-slate-700">Respuestas:</span> {evaluacionEstudiantes.total_respuestas}</p>
-                  <p><span className="font-medium text-slate-700">Peso:</span> {(pesoEstudiantes * 100).toFixed(0)}%</p>
+                  <p><span className="font-medium text-slate-700">Peso:</span> {isEncuestaMode ? '100%' : `${(pesoEstudiantes * 100).toFixed(0)}%`}</p>
                   <p><span className="font-medium text-slate-700">Ponderado:</span> {(toNumberOrNull(evaluacionEstudiantes.ponderado) ?? 0).toFixed(2)}</p>
                 </div>
               </div>
 
               {/* Autoevaluación Docente */}
-              <div className="p-4 rounded-lg bg-white border border-slate-200 hover:border-slate-300 transition-colors">
-                <p className="text-sm font-medium text-slate-500 mb-2">
-                  Docente
-                </p>
-                <div className="flex items-baseline gap-1 mb-3">
-                  <span className={`text-4xl font-semibold ${getPromedioColor(toNumberOrNull(autoevaluacionDocente.promedio_general) ?? 0)}`}>
-                    {(toNumberOrNull(autoevaluacionDocente.promedio_general) ?? 0).toFixed(2)}
-                  </span>
-                  <span className="text-slate-400 text-base">/{escalaMaxima.toFixed(1)}</span>
+              {!isEncuestaMode && (
+                <div className="p-4 rounded-lg bg-white border border-slate-200 hover:border-slate-300 transition-colors">
+                  <p className="text-sm font-medium text-slate-500 mb-2">
+                    Docente
+                  </p>
+                  <div className="flex items-baseline gap-1 mb-3">
+                    <span className={`text-4xl font-semibold ${getPromedioColor(toNumberOrNull(autoevaluacionDocente.promedio_general) ?? 0)}`}>
+                      {(toNumberOrNull(autoevaluacionDocente.promedio_general) ?? 0).toFixed(2)}
+                    </span>
+                    <span className="text-slate-400 text-base">/{escalaMaxima.toFixed(1)}</span>
+                  </div>
+                  <div className="space-y-1 text-sm text-slate-600">
+                    <p><span className="font-medium text-slate-700">Respuestas:</span> {autoevaluacionesRealizadas}</p>
+                    <p><span className="font-medium text-slate-700">Peso:</span> {(pesoDocente * 100).toFixed(0)}%</p>
+                    <p><span className="font-medium text-slate-700">Ponderado:</span> {(toNumberOrNull(autoevaluacionDocente.ponderado) ?? 0).toFixed(2)}</p>
+                  </div>
                 </div>
-                <div className="space-y-1 text-sm text-slate-600">
-                  <p><span className="font-medium text-slate-700">Respuestas:</span> {autoevaluacionesRealizadas}</p>
-                  <p><span className="font-medium text-slate-700">Peso:</span> {(pesoDocente * 100).toFixed(0)}%</p>
-                  <p><span className="font-medium text-slate-700">Ponderado:</span> {(toNumberOrNull(autoevaluacionDocente.ponderado) ?? 0).toFixed(2)}</p>
-                </div>
-              </div>
+              )}
 
               {/* Resultado Final */}
               <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-slate-300 transition-colors">
                 <p className="text-sm font-medium text-slate-500 mb-2">
-                  Nota Final
+                  {isEncuestaMode ? 'Nota Final Encuesta' : 'Nota Final'}
                 </p>
                 <div className="flex items-baseline gap-1 mb-3">
                   <span className={`text-4xl font-semibold ${getPromedioColor(toNumberOrNull(resultadoFinal?.nota_final_ponderada) ?? 0)}`}>
@@ -290,17 +319,19 @@ export default function AnalisisAspectos({
                 </div>
                 <div className="text-sm">
                   <p className="text-slate-600">
-                    <span className="font-medium text-slate-700">Nota final ponderada:</span>{" "}
+                    <span className="font-medium text-slate-700">{isEncuestaMode ? 'Nota final encuesta:' : 'Nota final ponderada:'}</span>{" "}
                     <span className="font-semibold text-slate-900">
                       {(toNumberOrNull(resultadoFinal?.nota_final_ponderada) ?? 0).toFixed(2)}
                     </span>
                   </p>
-                  <p className="text-slate-600 mt-1">
-                    <span className="font-medium text-slate-700">Diferencia:</span>{" "}
-                    <span className={getDiferenciaBadgeClass(calcularDiferencia(toNumberOrNull(evaluacionEstudiantes.promedio_general) ?? 0, toNumberOrNull(autoevaluacionDocente.promedio_general) ?? 0))}>
-                      {calcularDiferencia(toNumberOrNull(evaluacionEstudiantes.promedio_general) ?? 0, toNumberOrNull(autoevaluacionDocente.promedio_general) ?? 0).toFixed(2)}
-                    </span>
-                  </p>
+                  {!isEncuestaMode && (
+                    <p className="text-slate-600 mt-1">
+                      <span className="font-medium text-slate-700">Diferencia:</span>{" "}
+                      <span className={getDiferenciaBadgeClass(calcularDiferencia(toNumberOrNull(evaluacionEstudiantes.promedio_general) ?? 0, toNumberOrNull(autoevaluacionDocente.promedio_general) ?? 0))}>
+                        {calcularDiferencia(toNumberOrNull(evaluacionEstudiantes.promedio_general) ?? 0, toNumberOrNull(autoevaluacionDocente.promedio_general) ?? 0).toFixed(2)}
+                      </span>
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -312,7 +343,7 @@ export default function AnalisisAspectos({
                 <div className="p-6 rounded-lg bg-white border border-slate-200 h-full">
                   <div className="mb-4">
                     <h3 className="text-lg font-semibold text-slate-900">Balance de Competencias</h3>
-                    <p className="text-sm text-slate-500 mt-0.5">Comparación visual por aspecto evaluado</p>
+                    <p className="text-sm text-slate-500 mt-0.5">{isEncuestaMode ? 'Comportamiento de encuesta por aspecto' : 'Comparación visual por aspecto evaluado'}</p>
                   </div>
                   <div className="h-[450px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -340,7 +371,7 @@ export default function AnalisisAspectos({
                           axisLine={{ stroke: '#e2e8f0', strokeWidth: 0.5 }}
                         />
                         <Radar
-                          name="Estudiantes"
+                          name={isEncuestaMode ? 'Encuesta' : 'Estudiantes'}
                           dataKey="Estudiantes"
                           stroke="#4f46e5"
                           fill="#4f46e5"
@@ -351,18 +382,20 @@ export default function AnalisisAspectos({
                           connectNulls
                           hide={!visibleSeries.est}
                         />
-                        <Radar
-                          name="Docente"
-                          dataKey="Docente"
-                          stroke="#64748b"
-                          fill="#64748b"
-                          fillOpacity={0.1}
-                          strokeWidth={2}
-                          dot={{ r: 3, strokeWidth: 1 }}
-                          activeDot={{ r: 5 }}
-                          connectNulls
-                          hide={!visibleSeries.auto}
-                        />
+                        {!isEncuestaMode && (
+                          <Radar
+                            name="Docente"
+                            dataKey="Docente"
+                            stroke="#64748b"
+                            fill="#64748b"
+                            fillOpacity={0.1}
+                            strokeWidth={2}
+                            dot={{ r: 3, strokeWidth: 1 }}
+                            activeDot={{ r: 5 }}
+                            connectNulls
+                            hide={!visibleSeries.auto}
+                          />
+                        )}
                         <Tooltip content={<CustomTooltip />} />
                         <Legend 
                           verticalAlign="top"
@@ -370,6 +403,10 @@ export default function AnalisisAspectos({
                           wrapperStyle={{ cursor: 'pointer', paddingRight: '10px' }}
                           iconType="circle"
                           onClick={(e) => {
+                            if (isEncuestaMode) {
+                              setVisibleSeries(prev => ({ ...prev, est: !prev.est }));
+                              return;
+                            }
                             const key = e.dataKey === 'Estudiantes' ? 'est' : 'auto';
                             setVisibleSeries(prev => ({ ...prev, [key]: !prev[key as keyof typeof visibleSeries] }));
                           }}
@@ -395,24 +432,26 @@ export default function AnalisisAspectos({
                           
                           <div className="grid grid-cols-2 gap-2 mb-2">
                             {/* Estudiantes */}
-                            <div className="bg-slate-50 rounded px-2 py-1.5">
-                              <p className="text-xs text-slate-500 font-medium mb-0.5">Estud.</p>
+                            <div className={`bg-slate-50 rounded px-2 py-1.5 ${isEncuestaMode ? 'col-span-2' : ''}`}>
+                              <p className="text-xs text-slate-500 font-medium mb-0.5">{isEncuestaMode ? 'Encuesta' : 'Estud.'}</p>
                               <p className="text-base font-semibold text-indigo-600">
                                 {item.est !== null ? item.est.toFixed(2) : "—"}
                               </p>
                             </div>
 
                             {/* Docente */}
-                            <div className="bg-slate-50 rounded px-2 py-1.5">
-                              <p className="text-xs text-slate-500 font-medium mb-0.5">Doc.</p>
-                              <p className="text-base font-semibold text-slate-700">
-                                {item.auto !== null ? item.auto.toFixed(2) : "—"}
-                              </p>
-                            </div>
+                            {!isEncuestaMode && (
+                              <div className="bg-slate-50 rounded px-2 py-1.5">
+                                <p className="text-xs text-slate-500 font-medium mb-0.5">Doc.</p>
+                                <p className="text-base font-semibold text-slate-700">
+                                  {item.auto !== null ? item.auto.toFixed(2) : "—"}
+                                </p>
+                              </div>
+                            )}
                           </div>
 
                           {/* Diferencia */}
-                          {diff !== null && (
+                          {!isEncuestaMode && diff !== null && (
                             <Badge 
                               variant="outline" 
                               className={`w-full justify-center text-xs py-0.5 border ${getDiferenciaBadgeClass(diff)}`}

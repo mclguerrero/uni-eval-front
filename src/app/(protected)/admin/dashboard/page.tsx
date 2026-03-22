@@ -39,6 +39,7 @@ interface DashboardDataState {
 export default function AdminDashboard() {
   const { toast } = useToast();
   const [loadingBackup, setLoadingBackup] = useState(false);
+  const [isEncuestaMode, setIsEncuestaMode] = useState(false);
 
   const handleBackup = async () => {
     try {
@@ -114,10 +115,13 @@ export default function AdminDashboard() {
           ...(filtros.periodoSeleccionado && { periodo: filtros.periodoSeleccionado }),
         };
 
-        const [summaryResponse, rankingResponse, programasResponse] = await Promise.all([
+        const encuestaMode = await metricService.isEncuestaCfgT(filtros.configuracionSeleccionada);
+        setIsEncuestaMode(encuestaMode);
+
+        const [summaryResponse, programasResponse, rankingResponse] = await Promise.all([
           metricService.getSummary(metricParams),
-          metricService.getRanking(metricParams),
           metricService.getSummaryByPrograms(metricParamsGrafica),
+          encuestaMode ? Promise.resolve({ ranking: [] as RankingItem[] }) : metricService.getRanking(metricParams),
         ]);
 
         setDashboardData({
@@ -128,6 +132,7 @@ export default function AdminDashboard() {
         });
       } catch (error) {
         console.error("Error al cargar el dashboard:", error);
+        setIsEncuestaMode(false);
         toast({
           title: "Sincronización Fallida",
           description: error instanceof Error ? error.message : "Error al recuperar datos del servidor",
@@ -289,13 +294,15 @@ export default function AdminDashboard() {
             </section>
 
             {/* Skeleton para Ranking */}
-            <section className="space-y-6">
-              <div className="flex items-center gap-3 px-4">
-                <Skeleton className="h-4 w-4 rounded-full" />
-                <Skeleton className="h-3 w-64" />
-              </div>
-              <Skeleton className="h-[600px] rounded-[2.5rem]" />
-            </section>
+            {!isEncuestaMode && (
+              <section className="space-y-6">
+                <div className="flex items-center gap-3 px-4">
+                  <Skeleton className="h-4 w-4 rounded-full" />
+                  <Skeleton className="h-3 w-64" />
+                </div>
+                <Skeleton className="h-[600px] rounded-[2.5rem]" />
+              </section>
+            )}
           </div>
         ) : !dashboardData ? (
           <div className="bg-rose-50 border border-rose-100 rounded-[2.5rem] p-16 text-center max-w-xl mx-auto my-20">
@@ -344,13 +351,15 @@ export default function AdminDashboard() {
             </div>
 
             {/* Ranking Docente de Excelencia */}
-            <section className="space-y-6">
-              <div className="flex items-center gap-3 px-4">
-                <Clock className="h-4 w-4 text-slate-900" />
-                <h3 className="text-xs font-medium text-muted-foreground leading-none">Liderazgo y Proyección Académica</h3>
-              </div>
-              <RankingDocentes docentes={dashboardData.docentesRanking} loading={loading} filtros={filtros} />
-            </section>
+            {!isEncuestaMode && (
+              <section className="space-y-6">
+                <div className="flex items-center gap-3 px-4">
+                  <Clock className="h-4 w-4 text-slate-900" />
+                  <h3 className="text-xs font-medium text-muted-foreground leading-none">Liderazgo y Proyección Académica</h3>
+                </div>
+                <RankingDocentes docentes={dashboardData.docentesRanking} loading={loading} filtros={filtros} />
+              </section>
+            )}
           </div>
         )}
       </main>

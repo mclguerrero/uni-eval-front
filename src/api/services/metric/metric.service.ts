@@ -4,6 +4,8 @@
  */
 
 import { httpClient } from '../../core/HttpClient';
+import { configuracionEvaluacionService } from '../app/cfg-t.service';
+import type { ConfiguracionTipo } from '../app/cfg-t.service';
 
 // ========================
 // TYPES
@@ -125,6 +127,13 @@ export interface DocenteAspectosMetrics {
   evaluacion_estudiantes: AspectoGroupMetrics;
   autoevaluacion_docente: AspectoGroupMetrics;
   resultado_final: ResultadoFinalMetrics;
+  aspectos?: AspectoMetric[];
+  promedio?: number | null;
+  desviacion?: number | null;
+  total_respuestas?: number;
+  suma_total?: number;
+  nota_general?: number | null;
+  nota_final_encuesta?: number | null;
 }
 
 export interface MateriaGrupoMetric {
@@ -221,19 +230,314 @@ export interface CommentsAnalysisResponse {
 // SERVICE
 // ========================
 
+type MetricRoute = 'evaluations' | 'encuesta';
+
+const metricRouteCache = new Map<number, MetricRoute>();
+const metricRouteInflight = new Map<number, Promise<MetricRoute>>();
+
+const getNumber = (value: unknown, fallback = 0): number => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const buildMetricParams = (
+  filters: MetricFilters & {
+    docente?: string;
+    codigo_materia?: string;
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    usuario?: string;
+  }
+): URLSearchParams => {
+  const params = new URLSearchParams();
+  params.append('cfg_t', filters.cfg_t.toString());
+
+  if (filters.docente) params.append('docente', filters.docente);
+  if (filters.usuario) params.append('usuario', filters.usuario);
+  if (filters.codigo_materia) params.append('codigo_materia', filters.codigo_materia);
+  if (filters.search) params.append('search', filters.search);
+  if (filters.sortBy) params.append('sortBy', filters.sortBy);
+  if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
+  if (filters.sede) params.append('sede', filters.sede);
+  if (filters.periodo) params.append('periodo', filters.periodo);
+  if (filters.programa) params.append('programa', filters.programa);
+  if (filters.semestre) params.append('semestre', filters.semestre);
+  if (filters.grupo) params.append('grupo', filters.grupo);
+  if (filters.page) params.append('page', filters.page.toString());
+  if (filters.limit) params.append('limit', filters.limit.toString());
+
+  return params;
+};
+
+const extractConfig = (response: unknown): ConfiguracionTipo | null => {
+  if (!response || typeof response !== 'object') return null;
+
+  const direct = response as ConfiguracionTipo;
+  if (typeof direct.id === 'number') return direct;
+
+  const one = (response as { data?: unknown }).data;
+  if (one && typeof one === 'object' && typeof (one as ConfiguracionTipo).id === 'number') {
+    return one as ConfiguracionTipo;
+  }
+
+  const two = (one as { data?: unknown } | undefined)?.data;
+  if (two && typeof two === 'object' && typeof (two as ConfiguracionTipo).id === 'number') {
+    return two as ConfiguracionTipo;
+  }
+
+  return null;
+};
+
+const resolveMetricRoute = async (cfgT: number): Promise<MetricRoute> => {
+  if (metricRouteCache.has(cfgT)) {
+    return metricRouteCache.get(cfgT)!;
+  }
+
+  if (metricRouteInflight.has(cfgT)) {
+    return metricRouteInflight.get(cfgT)!;
+  }
+
+  const resolver = (async () => {
+    try {
+      const response = await configuracionEvaluacionService.getById(cfgT);
+      const cfg = extractConfig(response);
+      const tipoFormId = cfg?.tipo_form?.id ?? cfg?.tipo_form_id ?? 1;
+      const route: MetricRoute = tipoFormId === 2 ? 'encuesta' : 'evaluations';
+      metricRouteCache.set(cfgT, route);
+      return route;
+    } catch {
+      metricRouteCache.set(cfgT, 'evaluations');
+      return 'evaluations';
+    } finally {
+      metricRouteInflight.delete(cfgT);
+    }
+  })();
+
+  metricRouteInflight.set(cfgT, resolver);
+  return resolver;
+};
+
+const normalizeEncuestaSummary = (payload: any): SummaryMetrics => {
+  const generales = payload?.generales || {};
+  const totalEncuestas = getNumber(generales.total_encuestas, 0);
+  const totalRealizadas = getNumber(generales.total_realizadas, 0);
+  const totalPendientes = getNumber(generales.total_pendientes, Math.max(totalEncuestas - totalRealizadas, 0));
+
+  return {
+    generales: {
+      total_evaluaciones: totalEncuestas,
+      total_realizadas: totalRealizadas,
+      total_evaluaciones_registradas: totalEncuestas,
+      total_pendientes: totalPendientes,
+      total_estudiantes: 0,
+      total_estudiantes_registrados: 0,
+      total_estudiantes_pendientes: 0,
+      total_docentes: 0,
+      total_docentes_pendientes: 0,
+    },
+  };
+};
+
+const normalizeEncuestaProgramas = (payload: any): SummaryByPrograms => {
+  const programas = Array.isArray(payload?.programas) ? payload.programas : [];
+  return {
+    programas: programas.map((programa: any) => {
+      const totalEvaluaciones = getNumber(programa?.metricas?.total_encuestas, 0);
+      const totalRealizadas = getNumber(programa?.metricas?.total_realizadas, 0);
+      const totalPendientes = getNumber(programa?.metricas?.total_pendientes, Math.max(totalEvaluaciones - totalRealizadas, 0));
+
+      return {
+        nombre: programa?.nombre || 'SIN_PROGRAMA',
+        selected: Boolean(programa?.selected),
+        metricas: {
+          total_evaluaciones: totalEvaluaciones,
+          total_evaluaciones_registradas: totalEvaluaciones,
+          total_realizadas: totalRealizadas,
+          total_pendientes: totalPendientes,
+          total_estudiantes: 0,
+          total_estudiantes_registrados: 0,
+          total_estudiantes_pendientes: 0,
+          total_docentes: 0,
+          total_docentes_pendientes: 0,
+        },
+        grupos: (Array.isArray(programa?.grupos) ? programa.grupos : []).map((grupo: any) => {
+          const grupoTotal = getNumber(grupo?.metricas?.total_encuestas, 0);
+          const grupoRealizadas = getNumber(grupo?.metricas?.total_realizadas, 0);
+          const grupoPendientes = getNumber(grupo?.metricas?.total_pendientes, Math.max(grupoTotal - grupoRealizadas, 0));
+
+          return {
+            grupo: grupo?.grupo || 'SIN_GRUPO',
+            metricas: {
+              total_evaluaciones: grupoTotal,
+              total_evaluaciones_registradas: grupoTotal,
+              total_realizadas: grupoRealizadas,
+              total_pendientes: grupoPendientes,
+              total_estudiantes: 0,
+              total_estudiantes_registrados: 0,
+              total_estudiantes_pendientes: 0,
+              total_docentes: 0,
+              total_docentes_pendientes: 0,
+            },
+          };
+        }),
+      };
+    }),
+  };
+};
+
+const normalizeDocenteList = (payload: any): DocenteListResponse => {
+  const rawData = Array.isArray(payload?.data) ? payload.data : [];
+
+  const data: DocenteGeneralMetrics[] = rawData.map((item: any) => {
+    const totalEvaluaciones = getNumber(item?.total_evaluaciones ?? item?.total_encuestas, 0);
+    const totalRealizadas = getNumber(item?.total_realizadas, 0);
+    const totalPendientes = getNumber(item?.total_pendientes, Math.max(totalEvaluaciones - totalRealizadas, 0));
+    const porcentaje = totalEvaluaciones > 0
+      ? Number(((totalRealizadas * 100) / totalEvaluaciones).toFixed(2))
+      : 0;
+
+    return {
+      docente: String(item?.docente ?? item?.usuario ?? ''),
+      nombre_docente: item?.nombre_docente ?? null,
+      promedio_general: item?.promedio_general ?? null,
+      desviacion_general: item?.desviacion_general ?? null,
+      total_evaluaciones: totalEvaluaciones,
+      total_realizadas: totalRealizadas,
+      total_pendientes: totalPendientes,
+      total_evaluaciones_registradas: getNumber(item?.total_evaluaciones_registradas, totalEvaluaciones),
+      total_estudiantes_registrados: getNumber(item?.total_estudiantes_registrados, 0),
+      total_aspectos: getNumber(item?.total_aspectos, 0),
+      porcentaje_cumplimiento: getNumber(item?.porcentaje_cumplimiento, porcentaje),
+      suma: getNumber(item?.suma ?? item?.suma_total, 0),
+    };
+  });
+
+  return {
+    data,
+    pagination: {
+      page: getNumber(payload?.pagination?.page, 1),
+      limit: getNumber(payload?.pagination?.limit, data.length || 10),
+      total: getNumber(payload?.pagination?.total, data.length),
+      pages: getNumber(payload?.pagination?.pages, 1),
+    },
+  };
+};
+
+const getEncuestaDocentesPage = async (
+  filters: MetricFilters & {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }
+): Promise<any> => {
+  const params = buildMetricParams(filters);
+  return httpClient.get<any>(`/metric/encuesta/docentes?${params.toString()}`);
+};
+
+const findEncuestaDocenteRaw = async (
+  docenteId: string,
+  filters: MetricFilters & {
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    limit?: number;
+  }
+): Promise<any | null> => {
+  const limit = Math.min(filters.limit ?? 100, 100);
+  const firstPage = await getEncuestaDocentesPage({ ...filters, page: 1, limit });
+
+  const firstData = Array.isArray(firstPage?.data) ? firstPage.data : [];
+  const foundInFirst = firstData.find((item: any) => String(item?.docente) === docenteId);
+  if (foundInFirst) return foundInFirst;
+
+  const totalPages = getNumber(firstPage?.pagination?.pages, 1);
+  for (let page = 2; page <= totalPages; page += 1) {
+    const response = await getEncuestaDocentesPage({ ...filters, page, limit });
+    const data = Array.isArray(response?.data) ? response.data : [];
+    const found = data.find((item: any) => String(item?.docente) === docenteId);
+    if (found) return found;
+  }
+
+  return null;
+};
+
+const normalizeEncuestaAspectos = (payload: any, docente?: string, codigoMateria?: string): DocenteAspectosMetrics => {
+  const aspectos: AspectoMetric[] = Array.isArray(payload?.aspectos)
+    ? payload.aspectos.map((a: any) => ({
+        aspecto_id: getNumber(a?.aspecto_id, 0),
+        nombre: a?.nombre ?? null,
+        total_respuestas: getNumber(a?.total_respuestas, 0),
+        suma: getNumber(a?.suma, 0),
+        promedio: a?.promedio ?? null,
+        desviacion: null,
+      }))
+    : [];
+
+  const totalRespuestas = getNumber(payload?.total_respuestas, 0);
+  const sumaTotal = getNumber(payload?.suma_total, 0);
+  const notaGeneral = payload?.nota_general ?? null;
+  const notaFinal = payload?.nota_final_encuesta ?? notaGeneral;
+
+  return {
+    docente: docente || 'AGREGADO',
+    codigo_materia: codigoMateria ?? null,
+    escala_maxima: 5,
+    evaluacion_estudiantes: {
+      peso: 1,
+      suma_total: sumaTotal,
+      total_respuestas: totalRespuestas,
+      promedio_general: notaGeneral,
+      ponderado: notaGeneral,
+      desviacion: null,
+      aspectos,
+    },
+    autoevaluacion_docente: {
+      peso: 0,
+      suma_total: 0,
+      total_respuestas: 0,
+      promedio_general: null,
+      ponderado: null,
+      desviacion: null,
+      aspectos: [],
+    },
+    resultado_final: {
+      nota_final_ponderada: notaFinal,
+    },
+    aspectos,
+    promedio: notaGeneral,
+    desviacion: null,
+    total_respuestas: totalRespuestas,
+    suma_total: sumaTotal,
+    nota_general: notaGeneral,
+    nota_final_encuesta: notaFinal,
+  };
+};
+
 export const metricService = {
+  getMetricRouteByCfgT: async (cfgT: number): Promise<'evaluations' | 'encuesta'> => {
+    return resolveMetricRoute(cfgT);
+  },
+
+  isEncuestaCfgT: async (cfgT: number): Promise<boolean> => {
+    return (await resolveMetricRoute(cfgT)) === 'encuesta';
+  },
+
   /**
    * Obtener resumen general de métricas de evaluaciones
    */
   getSummary: async (filters: MetricFilters): Promise<SummaryMetrics> => {
-    const params = new URLSearchParams();
-    params.append('cfg_t', filters.cfg_t.toString());
-    
-    if (filters.sede) params.append('sede', filters.sede);
-    if (filters.periodo) params.append('periodo', filters.periodo);
-    if (filters.programa) params.append('programa', filters.programa);
-    if (filters.semestre) params.append('semestre', filters.semestre);
-    if (filters.grupo) params.append('grupo', filters.grupo);
+    const params = buildMetricParams(filters);
+    const route = await resolveMetricRoute(filters.cfg_t);
+
+    if (route === 'encuesta') {
+      const response = await httpClient.get<any>(`/metric/encuesta/summary?${params.toString()}`);
+      return normalizeEncuestaSummary(response);
+    }
 
     return httpClient.get<SummaryMetrics>(`/metric/evaluations/summary?${params.toString()}`);
   },
@@ -242,14 +546,13 @@ export const metricService = {
    * Obtener métricas agrupadas por programas y grupos
    */
   getSummaryByPrograms: async (filters: MetricFilters): Promise<SummaryByPrograms> => {
-    const params = new URLSearchParams();
-    params.append('cfg_t', filters.cfg_t.toString());
-    
-    if (filters.sede) params.append('sede', filters.sede);
-    if (filters.periodo) params.append('periodo', filters.periodo);
-    if (filters.programa) params.append('programa', filters.programa);
-    if (filters.semestre) params.append('semestre', filters.semestre);
-    if (filters.grupo) params.append('grupo', filters.grupo);
+    const params = buildMetricParams(filters);
+    const route = await resolveMetricRoute(filters.cfg_t);
+
+    if (route === 'encuesta') {
+      const response = await httpClient.get<any>(`/metric/encuesta/summary/programas?${params.toString()}`);
+      return normalizeEncuestaProgramas(response);
+    }
 
     return httpClient.get<SummaryByPrograms>(`/metric/evaluations/summary/programas?${params.toString()}`);
   },
@@ -267,20 +570,42 @@ export const metricService = {
       sortOrder?: 'asc' | 'desc';
     }
   ): Promise<DocenteListResponse> => {
-    const params = new URLSearchParams();
-    params.append('cfg_t', filters.cfg_t.toString());
+    const params = buildMetricParams(filters);
+    const route = await resolveMetricRoute(filters.cfg_t);
 
-    if (filters.docente) params.append('docente', filters.docente);
-    if (filters.search) params.append('search', filters.search);
-    if (filters.sortBy) params.append('sortBy', filters.sortBy);
-    if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
-    if (filters.sede) params.append('sede', filters.sede);
-    if (filters.periodo) params.append('periodo', filters.periodo);
-    if (filters.programa) params.append('programa', filters.programa);
-    if (filters.semestre) params.append('semestre', filters.semestre);
-    if (filters.grupo) params.append('grupo', filters.grupo);
-    if (filters.page) params.append('page', filters.page.toString());
-    if (filters.limit) params.append('limit', filters.limit.toString());
+    if (route === 'encuesta') {
+      if (filters.docente) {
+        const found = await findEncuestaDocenteRaw(String(filters.docente), {
+          ...filters,
+          limit: 100,
+        });
+
+        if (!found) {
+          return {
+            data: [],
+            pagination: {
+              page: 1,
+              limit: 1,
+              total: 0,
+              pages: 1,
+            },
+          };
+        }
+
+        return normalizeDocenteList({
+          data: [found],
+          pagination: {
+            page: 1,
+            limit: 1,
+            total: 1,
+            pages: 1,
+          },
+        });
+      }
+
+      const response = await httpClient.get<any>(`/metric/encuesta/docentes?${params.toString()}`);
+      return normalizeDocenteList(response);
+    }
 
     return httpClient.get<DocenteListResponse>(`/metric/evaluations/docentes?${params.toString()}`);
   },
@@ -289,14 +614,29 @@ export const metricService = {
    * Obtener ranking de docentes con ajuste bayesiano
    */
   getRanking: async (filters: MetricFilters): Promise<RankingResponse> => {
-    const params = new URLSearchParams();
-    params.append('cfg_t', filters.cfg_t.toString());
-    
-    if (filters.sede) params.append('sede', filters.sede);
-    if (filters.periodo) params.append('periodo', filters.periodo);
-    if (filters.programa) params.append('programa', filters.programa);
-    if (filters.semestre) params.append('semestre', filters.semestre);
-    if (filters.grupo) params.append('grupo', filters.grupo);
+    const params = buildMetricParams(filters);
+    const route = await resolveMetricRoute(filters.cfg_t);
+
+    if (route === 'encuesta') {
+      const docentes = await metricService.getDocentes({
+        ...filters,
+        page: 1,
+        limit: 100,
+        sortBy: 'total_realizadas',
+        sortOrder: 'desc',
+      });
+
+      return {
+        ranking: (docentes.data || []).map((docente) => ({
+          docente: docente.docente,
+          nombre_docente: docente.nombre_docente || docente.docente,
+          avg: Number(docente.promedio_general ?? 0),
+          adjusted: Number(docente.promedio_general ?? 0),
+          realizados: docente.total_realizadas,
+          universo: docente.total_evaluaciones,
+        })),
+      };
+    }
 
     return httpClient.get<RankingResponse>(`/metric/evaluations/ranking?${params.toString()}`);
   },
@@ -305,16 +645,12 @@ export const metricService = {
    * Obtener métricas generales de un docente
    */
   getDocenteMetrics: async (docente: string, filters: MetricFilters): Promise<DocenteGeneralMetrics> => {
-    const params = new URLSearchParams();
-    params.append('cfg_t', filters.cfg_t.toString());
-    
-    if (filters.sede) params.append('sede', filters.sede);
-    if (filters.periodo) params.append('periodo', filters.periodo);
-    if (filters.programa) params.append('programa', filters.programa);
-    if (filters.semestre) params.append('semestre', filters.semestre);
-    if (filters.grupo) params.append('grupo', filters.grupo);
+    const list = await metricService.getDocentes({ ...filters, docente, page: 1, limit: 1 });
+    if (Array.isArray(list?.data) && list.data.length > 0) {
+      return list.data[0];
+    }
 
-    return httpClient.get<DocenteGeneralMetrics>(`/metric/evaluations/docente/${docente}?${params.toString()}`);
+    throw new Error('No se encontraron métricas del docente');
   },
 
   /**
@@ -324,16 +660,18 @@ export const metricService = {
   getDocenteAspectos: async (
     filters: DocenteMetricFilters & { docente?: string }
   ): Promise<DocenteAspectosMetrics> => {
-    const params = new URLSearchParams();
-    params.append('cfg_t', filters.cfg_t.toString());
-    
-    if (filters.docente) params.append('docente', filters.docente);
-    if (filters.codigo_materia) params.append('codigo_materia', filters.codigo_materia);
-    if (filters.sede) params.append('sede', filters.sede);
-    if (filters.periodo) params.append('periodo', filters.periodo);
-    if (filters.programa) params.append('programa', filters.programa);
-    if (filters.grupo) params.append('grupo', filters.grupo);
+    const route = await resolveMetricRoute(filters.cfg_t);
 
+    if (route === 'encuesta') {
+      const params = buildMetricParams({
+        ...filters,
+        usuario: filters.docente,
+      });
+      const response = await httpClient.get<any>(`/metric/encuesta/aspectos?${params.toString()}`);
+      return normalizeEncuestaAspectos(response, filters.docente, filters.codigo_materia);
+    }
+
+    const params = buildMetricParams(filters);
     return httpClient.get<DocenteAspectosMetrics>(`/metric/evaluations/docentes/aspectos?${params.toString()}`);
   },
 
@@ -342,15 +680,50 @@ export const metricService = {
    * Si se proporciona codigo_materia, filtra solo esa materia
    */
   getDocenteMaterias: async (docente: string, filters: DocenteMetricFilters): Promise<DocenteMateriasMetrics> => {
-    const params = new URLSearchParams();
-    params.append('cfg_t', filters.cfg_t.toString());
-    
-    if (filters.codigo_materia) params.append('codigo_materia', filters.codigo_materia);
-    if (filters.sede) params.append('sede', filters.sede);
-    if (filters.periodo) params.append('periodo', filters.periodo);
-    if (filters.programa) params.append('programa', filters.programa);
-    if (filters.semestre) params.append('semestre', filters.semestre);
+    const route = await resolveMetricRoute(filters.cfg_t);
 
+    if (route === 'encuesta') {
+      const docenteRaw = await findEncuestaDocenteRaw(String(docente), {
+        ...filters,
+        limit: 1,
+      });
+
+      const materiasRaw = Array.isArray(docenteRaw?.materias) ? docenteRaw.materias : [];
+      const materias: MateriaMetric[] = (Array.isArray(materiasRaw) ? materiasRaw : []).map((materia: any) => {
+        const totalEvaluaciones = getNumber(materia?.total_evaluaciones ?? materia?.total_encuestas, 0);
+        const totalRealizadas = getNumber(materia?.total_realizadas, 0);
+        const totalPendientes = getNumber(materia?.total_pendientes, Math.max(totalEvaluaciones - totalRealizadas, 0));
+
+        return {
+          codigo_materia: String(materia?.codigo_materia ?? ''),
+          nombre_materia: materia?.nombre_materia ?? '',
+          nom_programa: materia?.nom_programa ?? '',
+          semestre: materia?.semestre ?? '',
+          total_evaluaciones: totalEvaluaciones,
+          total_realizadas: totalRealizadas,
+          total_pendientes: totalPendientes,
+          suma: getNumber(materia?.suma ?? materia?.suma_total, 0),
+          promedio_general: materia?.promedio_general ?? null,
+          desviacion_general: materia?.desviacion_general ?? null,
+          total_evaluaciones_registradas: getNumber(materia?.total_evaluaciones_registradas, totalEvaluaciones),
+          total_estudiantes_registrados: getNumber(materia?.total_estudiantes_registrados, totalEvaluaciones),
+          total_aspectos: getNumber(materia?.total_aspectos, 0),
+          porcentaje_cumplimiento: getNumber(
+            materia?.porcentaje_cumplimiento,
+            totalEvaluaciones > 0 ? Number(((totalRealizadas * 100) / totalEvaluaciones).toFixed(2)) : 0
+          ),
+          grupos: Array.isArray(materia?.grupos) ? materia.grupos : [],
+        };
+      });
+
+      return {
+        docente,
+        nombre_docente: docenteRaw?.nombre_docente,
+        materias,
+      };
+    }
+
+    const params = buildMetricParams(filters);
     return httpClient.get<DocenteMateriasMetrics>(`/metric/evaluations/docente/${docente}/materias?${params.toString()}`);
   },
 
@@ -363,18 +736,14 @@ export const metricService = {
     codigoMateria: string,
     filters: MetricFilters
   ): Promise<MateriaCompletionMetrics> => {
-    const params = new URLSearchParams();
-    params.append('cfg_t', filters.cfg_t.toString());
-    
-    if (filters.sede) params.append('sede', filters.sede);
-    if (filters.periodo) params.append('periodo', filters.periodo);
-    if (filters.programa) params.append('programa', filters.programa);
-    if (filters.semestre) params.append('semestre', filters.semestre);
-    if (filters.grupo) params.append('grupo', filters.grupo);
+    const params = buildMetricParams(filters);
+    const route = await resolveMetricRoute(filters.cfg_t);
 
-    return httpClient.get<MateriaCompletionMetrics>(
-      `/metric/evaluations/docente/${docente}/materias/${codigoMateria}/completion?${params.toString()}`
-    );
+    const endpoint = route === 'encuesta'
+      ? `/metric/encuesta/docente/${docente}/materias/${codigoMateria}/completion?${params.toString()}`
+      : `/metric/evaluations/docente/${docente}/materias/${codigoMateria}/completion?${params.toString()}`;
+
+    return httpClient.get<MateriaCompletionMetrics>(endpoint);
   },
 
   /**
