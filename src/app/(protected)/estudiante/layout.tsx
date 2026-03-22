@@ -9,7 +9,7 @@ export default function EstudianteLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="">
+    <div className="min-h-screen bg-background">
       {/* Header fijo */}
       <Header />
 

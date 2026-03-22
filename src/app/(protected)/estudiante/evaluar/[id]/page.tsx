@@ -284,27 +284,27 @@ export default function EvaluarDocentePage({ params }: { params: Promise<{ id: s
   if (!config) return null;
 
   return (
-    <div className="py-8 px-3">
-      <div className="max-w-5xl mx-auto space-y-6">
+    <div className="py-4 sm:py-8 px-3 sm:px-4">
+      <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6">
 
         {/* HEADER PRINCIPAL */}
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="rounded-3xl shadow-xl border-0">
-            <CardContent className="p-6 md:p-8">
+            <CardContent className="p-4 sm:p-6 md:p-8">
 
                 {/* INFO IZQUIERDA */}
                 <div className="space-y-4">
 
-                  <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight leading-tight">
                     {config?.tipo_evaluacion?.tipo?.nombre || "Evaluación docente"}
                   </h1>
 
-                  <div className="flex items-center gap-2 text-gray-600 font-medium">
+                  <div className="flex items-start gap-2 text-gray-600 font-medium text-sm sm:text-base">
                     <BookOpen className="w-4 h-4" />
                     <span>{materia || "Materia no disponible"}</span>
                   </div>
 
-                  <div className="flex items-center gap-2 text-gray-600 font-medium">
+                  <div className="flex items-start gap-2 text-gray-600 font-medium text-sm sm:text-base">
                     <User className="w-4 h-4" />
                     <span>{docente || "Docente no disponible"}</span>
                   </div>
@@ -316,7 +316,7 @@ export default function EvaluarDocentePage({ params }: { params: Promise<{ id: s
         </motion.div>
 
         {/* FORM */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           {config.aspectos.map((aspecto, index) => {
             const abierto = openAspecto === aspecto.id;
             const opcionSeleccionadaId = selecciones[aspecto.id];
@@ -339,19 +339,19 @@ export default function EvaluarDocentePage({ params }: { params: Promise<{ id: s
 
                   <button
                     type="button"
-                    className="w-full text-left p-5 flex justify-between items-start"
+                    className="w-full text-left p-4 sm:p-5 flex justify-between items-start gap-3"
                     onClick={() => setOpenAspecto(abierto ? null : aspecto.id)}
                   >
                     <div>
-                      <h3 className="font-semibold text-lg">{aspecto.nombre}</h3>
-                      <p className="text-sm text-gray-500">{aspecto.descripcion}</p>
+                      <h3 className="font-semibold text-base sm:text-lg leading-snug">{aspecto.nombre}</h3>
+                      <p className="text-xs sm:text-sm text-gray-500 mt-1">{aspecto.descripcion}</p>
                     </div>
 
                     {abierto ? <ChevronUp /> : <ChevronDown />}
                   </button>
 
                   {abierto && (
-                    <CardContent className="border-t space-y-6">
+                    <CardContent className="border-t space-y-4 sm:space-y-6 p-4 sm:p-6">
 
                       {esSinEscala ? (
                         <div className="space-y-2">
@@ -380,10 +380,10 @@ export default function EvaluarDocentePage({ params }: { params: Promise<{ id: s
                             <Label
                               key={op.id}
                               htmlFor={`op-${op.id}`}
-                              className="flex items-center justify-between border rounded-xl p-4 cursor-pointer hover:bg-gray-50 transition"
+                              className="flex items-center justify-between border rounded-xl p-3 sm:p-4 cursor-pointer hover:bg-gray-50 transition gap-3"
                             >
                               <div>
-                                <p className="font-medium">
+                                <p className="font-medium text-sm sm:text-base">
                                   {op.sigla} - {op.nombre}
                                 </p>
                                 <p className="text-xs text-gray-500">{op.descripcion}</p>
@@ -440,12 +440,12 @@ export default function EvaluarDocentePage({ params }: { params: Promise<{ id: s
           )}
 
           {/* FOOTER */}
-          <CardFooter className="flex justify-between">
-            <Button variant="outline" onClick={() => router.back()}>
+          <CardFooter className="flex flex-col-reverse sm:flex-row justify-between gap-3 px-0">
+            <Button variant="outline" onClick={() => router.back()} className="w-full sm:w-auto">
               Cancelar
             </Button>
 
-            <Button disabled={isSubmitting} type="submit">
+            <Button disabled={isSubmitting} type="submit" className="w-full sm:w-auto">
               {isSubmitting ? "Enviando..." : "Enviar evaluación"}
             </Button>
           </CardFooter>

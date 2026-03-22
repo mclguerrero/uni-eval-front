@@ -103,6 +103,7 @@ export {
   tiposEvaluacionService,
   categoriaTipoService,
   configuracionTipoRolService,
+  configuracionTipoScopeService,
   categoriaTipoMapService,
   tipoFormService,
 } from './services/app/t-a-e/tipo.service';
@@ -111,10 +112,13 @@ export type {
   TipoForm,
   CategoriaTipo,
   ConfiguracionTipoRol,
+  ConfiguracionTipoScope,
   TipoMapItem,
   CategoriaTipoItemsResponse,
   CreateCategoriaTipoMapInput,
   CreateCategoriaTipoMapResponse,
+  CreateConfiguracionTipoScopeInput,
+  UpdateConfiguracionTipoScopeInput,
   CreateTipoFormInput,
   UpdateTipoFormInput,
 } from './services/app/t-a-e/tipo.service';

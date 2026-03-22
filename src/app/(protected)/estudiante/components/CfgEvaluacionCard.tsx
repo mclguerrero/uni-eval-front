@@ -5,12 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Calendar,
   Clock,
   Star,
   Timer,
   AlertTriangle,
   CheckCircle2,
+  Info,
+  Settings2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { ConfiguracionTipo, EvalByUserItem } from "@/src/api";
@@ -88,6 +95,41 @@ const getProgress = (inicio: string, fin: string) => {
   return Math.max(0, Math.min(100, (passed / total) * 100));
 };
 
+const formatScopeSummary = (config: ConfiguracionTipo) => {
+  if (!config.scopes?.length) return "Sin scopes";
+  const scope = config.scopes[0];
+  const programa = scope.programa_nombre ? ` · ${scope.programa_nombre}` : "";
+  const semestre = scope.semestre_nombre ? ` · ${scope.semestre_nombre}` : "";
+  const grupo = scope.grupo_nombre ? ` · ${scope.grupo_nombre}` : "";
+  return `${scope.sede_nombre || "Sede N/A"} · ${scope.periodo_nombre || "Periodo N/A"}${programa}${semestre}${grupo}`;
+};
+
+const formatScopeSedePeriodo = (config: ConfiguracionTipo) => {
+  if (!config.scopes?.length) return "Sede N/A · Periodo N/A";
+  const scope = config.scopes[0];
+  return `${scope.sede_nombre || "Sede N/A"} · ${scope.periodo_nombre || "Periodo N/A"}`;
+};
+
+const getScopeDetallesRows = (config: ConfiguracionTipo) => {
+  if (!config.scopes?.length) return ["Sin detalle de scope"];
+  const scope = config.scopes[0];
+  const rows: string[] = [];
+
+  if (scope.programa_nombre) {
+    rows.push(scope.programa_nombre);
+  }
+
+  const semestreGrupo = [scope.semestre_nombre, scope.grupo_nombre]
+    .filter(Boolean)
+    .join(" - ");
+
+  if (semestreGrupo) {
+    rows.push(semestreGrupo);
+  }
+
+  return rows.length > 0 ? rows : ["Sin detalle de scope"];
+};
+
 // ---------- Component ----------
 export default function EvaluacionCard({
   configuracion,
@@ -162,20 +204,90 @@ export default function EvaluacionCard({
     >
       <Card className="relative h-full rounded-3xl border-2 bg-white shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden">
         {/* ---------- Header ---------- */}
-        <CardHeader className="space-y-4 pb-4">
+        <CardHeader className="space-y-3 sm:space-y-4 pb-3 sm:pb-4 px-4 sm:px-6">
           {/* Titulo */}
           <div className="flex flex-col items-center gap-2 text-center">
             <Badge className={tipoFormColor}>
               {tipoFormNombre}
             </Badge>
-            <CardTitle className="text-lg md:text-2xl font-bold leading-tight break-words">
+            <CardTitle className="text-base sm:text-lg md:text-2xl font-bold leading-tight break-words">
               {titulo}
             </CardTitle>
+            <div className="flex items-center justify-center gap-2 pt-1">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 rounded-full"
+                    aria-label="Ver concepto"
+                  >
+                    <Info className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[calc(100vw-2rem)] max-w-sm rounded-2xl border-slate-200 p-4">
+                  <div className="space-y-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Concepto</p>
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-slate-500">Tipo</p>
+                      <p className="text-sm font-semibold text-slate-800 mt-1">
+                        {configuracion.tipo_evaluacion?.tipo?.nombre || "Sin tipo"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-slate-500">Descripción</p>
+                      <p className="text-sm text-slate-700 mt-1 leading-relaxed">
+                        {configuracion.tipo_evaluacion?.tipo?.descripcion || "Sin descripción disponible"}
+                      </p>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 rounded-full"
+                    aria-label="Ver configuración"
+                  >
+                    <Settings2 className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[calc(100vw-2rem)] max-w-md rounded-2xl border-slate-200 p-4">
+                  <div className="grid grid-cols-1 gap-2 text-center">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                      <p className="text-sm font-medium text-slate-700 line-clamp-2 text-center">
+                        {formatScopeSedePeriodo(configuracion)}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                        <p className="text-xs md:text-sm font-medium text-slate-800 text-center">{tipoFormNombre.toUpperCase()}</p>
+                      </div>
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                        <p className="text-xs md:text-sm font-medium text-slate-700 line-clamp-2 text-center">
+                          {(configuracion.rolesRequeridos?.[0]?.nombre || "-").toUpperCase()}
+                        </p>
+                      </div>
+                    </div>
+
+                    {getScopeDetallesRows(configuracion).map((detalle, idx) => (
+                      <div key={`${configuracion.id}-detalle-popover-${idx}`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                        <p className="text-sm font-medium text-slate-700 line-clamp-2 text-center">{detalle}</p>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
         </CardHeader>
 
         {/* ---------- Body ---------- */}
-        <CardContent className="space-y-5 px-4 md:px-6">
+        <CardContent className="space-y-4 sm:space-y-5 px-4 sm:px-5 md:px-6 pb-4 sm:pb-6">
           {/* Fechas (VERTICALES) */}
           <div className="grid grid-cols-1 gap-3 text-sm md:text-base">
             <InfoItem
@@ -266,6 +378,7 @@ export default function EvaluacionCard({
           </Button>
         </CardContent>
       </Card>
+
     </motion.div>
   );
 }

@@ -24,11 +24,11 @@ export default function EvaluationCard({
       {/* Accent bar */}
       <div className={`h-1 w-full ${isCompleted ? "bg-green-400" : "bg-gray-900"}`} />
 
-      <div className="p-6 flex flex-col h-full">
+      <div className="p-4 sm:p-6 flex flex-col h-full">
 
         {/* Title */}
         <div className="mb-4">
-          <h3 className="text-xl font-bold text-gray-900 leading-tight">
+          <h3 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">
             {evaluacion.nombre_materia || "Materia"}
           </h3>
         </div>
@@ -66,7 +66,7 @@ export default function EvaluationCard({
         <div className="flex-grow" />
 
         {/* Footer */}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 
           <Status completed={isCompleted} />
 
@@ -81,7 +81,7 @@ export default function EvaluationCard({
                 `&materia=${encodeURIComponent(evaluacion.nombre_materia || "")}`
               )
             }
-            className={`rounded-xl px-5 py-2 font-semibold transition flex items-center gap-2 ${
+            className={`w-full sm:w-auto rounded-xl px-5 py-2 font-semibold transition flex items-center justify-center gap-2 ${
               isCompleted
                 ? "bg-gray-200 text-gray-500"
                 : "bg-gray-900 hover:bg-gray-800 text-white"

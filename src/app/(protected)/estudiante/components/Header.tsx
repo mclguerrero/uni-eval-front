@@ -124,7 +124,7 @@ export function Header({ onLogout }: HeaderProps) {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-800 text-white">
               <GraduationCap className="h-5 w-5" />
             </div>
-            <h1 className="font-bold text-lg">EduPortal</h1>
+            <h1 className="font-bold text-base sm:text-lg">EduPortal</h1>
           </Link>
           <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse" />
         </div>
@@ -157,7 +157,7 @@ export function Header({ onLogout }: HeaderProps) {
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-800 text-white">
                 <GraduationCap className="h-5 w-5" />
               </div>
-              <h1 className="font-bold text-lg">EduPortal</h1>
+              <h1 className="font-bold text-base sm:text-lg">EduPortal</h1>
             </Link>
           </div>
 
@@ -166,7 +166,7 @@ export function Header({ onLogout }: HeaderProps) {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="flex items-center gap-2 rounded-xl px-2"
+                className="flex items-center gap-2 rounded-xl px-2 min-w-0"
               >
                 {/* NOMBRE AL LADO DEL ICON */}
                 <span className="font-medium text-sm hidden sm:block">
@@ -187,7 +187,7 @@ export function Header({ onLogout }: HeaderProps) {
               </Button>
             </DropdownMenuTrigger>
 
-            <DropdownMenuContent className="w-80 p-5" align="end">
+            <DropdownMenuContent className="w-[calc(100vw-1rem)] sm:w-80 max-w-sm p-4 sm:p-5" align="end" sideOffset={8}>
 
               <DropdownMenuGroup>
                 <DropdownMenuItem onClick={() => setShowProfileModal(true)}>
@@ -214,7 +214,7 @@ export function Header({ onLogout }: HeaderProps) {
 
       {/* Modal Perfil */}
       <Dialog open={showProfileModal} onOpenChange={setShowProfileModal}>
-        <DialogContent className="sm:max-w-[650px]">
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-[650px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Perfil del Estudiante</DialogTitle>
           </DialogHeader>
@@ -229,7 +229,7 @@ export function Header({ onLogout }: HeaderProps) {
 
               <Badge>{perfilAcademico.semestre}</Badge>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <InfoItem
                   icon={<GraduationCap size={18} />}
                   label="Programa"

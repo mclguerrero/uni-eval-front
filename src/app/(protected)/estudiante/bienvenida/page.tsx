@@ -268,8 +268,8 @@ export default function EstudianteBienvenida() {
 
   if (profileError) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="max-w-md mx-auto shadow-lg">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-6">
+        <Card className="w-full max-w-md mx-auto shadow-lg">
           <CardContent className="text-center py-12">
             <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <AlertCircle className="h-10 w-10 text-red-600" />
@@ -313,15 +313,15 @@ export default function EstudianteBienvenida() {
 
   return (
     <>
-      <main className="container mx-auto p-6 max-w-6xl">
+      <main className="container mx-auto max-w-6xl px-3 py-4 sm:px-6 sm:py-6">
         {/* Evaluaciones Disponibles */}
-        <div className="mb-8">
-          <div className="text-center mb-8 animate-fade-in-up">
-            <h2 className="text-3xl font-bold text-gray-900 mb-3 bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+        <div className="mb-6 sm:mb-8">
+          <div className="text-center mb-6 sm:mb-8 animate-fade-in-up">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 sm:mb-3 bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
               Evaluaciones Disponibles
             </h2>
-            <p className="text-gray-600 text-lg">Selecciona una evaluación para completar</p>
-            <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-green-500 mx-auto mt-4 rounded-full"></div>
+            <p className="text-gray-600 text-sm sm:text-lg">Selecciona una evaluación para completar</p>
+            <div className="w-20 sm:w-24 h-1 bg-gradient-to-r from-blue-500 to-green-500 mx-auto mt-3 sm:mt-4 rounded-full"></div>
           </div>
 
           {loading ? (
@@ -344,7 +344,7 @@ export default function EstudianteBienvenida() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 max-w-7xl mx-auto">
               {configuraciones.map((configuracion, index) => (
                 <EvaluacionCard
                   key={configuracion.id}

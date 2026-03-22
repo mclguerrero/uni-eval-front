@@ -261,7 +261,7 @@ export default function Filtro({
             </span>
             <FilterChip
               label="Configuración"
-              value={`${configuracionSeleccionada.tipo_evaluacion?.tipo?.nombre || 'Tipo'} - ${configuracionSeleccionada.tipo_evaluacion?.categoria?.nombre || ''}`}
+              value={`${configuracionSeleccionada.tipo_evaluacion?.tipo?.nombre || 'Tipo'}${configuracionSeleccionada.tipo_form?.nombre ? ` · ${configuracionSeleccionada.tipo_form.nombre}` : ''} - ${configuracionSeleccionada.tipo_evaluacion?.categoria?.nombre || ''}`}
               onRemove={onLimpiarFiltro}
             />
           </div>
@@ -292,6 +292,7 @@ export default function Filtro({
                   <SelectItem key={config.id} value={String(config.id)}>
                     <span className="flex items-center gap-2">
                       {config.tipo_evaluacion?.tipo?.nombre || `Tipo ${config.tipo_id}`}
+                      {config.tipo_form?.nombre ? ` · ${config.tipo_form.nombre}` : ""}
                       {" - "}
                       {config.tipo_evaluacion?.categoria?.nombre || ""}
                       {config.es_activo && (

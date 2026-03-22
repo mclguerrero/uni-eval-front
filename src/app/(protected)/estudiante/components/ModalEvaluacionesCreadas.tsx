@@ -56,18 +56,18 @@ export function ModalEvaluacionesCreadas({
         }
       }}
     >
-      <DialogContent className="sm:max-w-2xl overflow-hidden">
+      <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         {isLoading ? (
           // Estado de carga mejorado con animaciones
           <>
             <DialogHeader>
-              <div className="flex flex-col items-center text-center space-y-6 py-4">
+              <div className="flex flex-col items-center text-center space-y-5 sm:space-y-6 py-2 sm:py-4">
                 {/* Spinner principal con efectos */}
                 <div className="relative">
-                  <div className="w-20 h-20 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
-                  <div className="absolute inset-0 w-20 h-20 border-4 border-transparent border-r-green-400 rounded-full animate-spin animate-reverse delay-75"></div>
-                  <div className="absolute inset-2 w-16 h-16 bg-gradient-to-br from-blue-50 to-green-50 rounded-full flex items-center justify-center">
-                    <BookOpen className="w-8 h-8 text-blue-600 animate-pulse" />
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
+                  <div className="absolute inset-0 w-16 h-16 sm:w-20 sm:h-20 border-4 border-transparent border-r-green-400 rounded-full animate-spin animate-reverse delay-75"></div>
+                  <div className="absolute inset-2 w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-50 to-green-50 rounded-full flex items-center justify-center">
+                    <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 animate-pulse" />
                   </div>
                   {/* Partículas flotantes */}
                   <div className="absolute -top-2 -right-2 w-3 h-3 bg-blue-400 rounded-full animate-bounce delay-100"></div>
@@ -76,7 +76,7 @@ export function ModalEvaluacionesCreadas({
                 </div>
                 
                 <div className="space-y-2">
-                  <DialogTitle className="text-2xl font-bold text-gray-900 animate-pulse">
+                  <DialogTitle className="text-xl sm:text-2xl font-bold text-gray-900 animate-pulse">
                     Creando evaluaciones
                   </DialogTitle>
                   <div className="flex items-center justify-center space-x-1">
@@ -88,8 +88,8 @@ export function ModalEvaluacionesCreadas({
               </div>
             </DialogHeader>
             
-            <div className="py-8 space-y-6">
-              <p className="text-center text-gray-600 text-lg font-medium">
+            <div className="py-5 sm:py-8 space-y-5 sm:space-y-6">
+              <p className="text-center text-gray-600 text-base sm:text-lg font-medium">
                 Por favor espera mientras configuramos todo para ti
               </p>
               
@@ -109,7 +109,7 @@ export function ModalEvaluacionesCreadas({
               </div>
               
               {/* Pasos de progreso con animaciones */}
-              <div className="space-y-4 max-w-lg mx-auto">
+              <div className="space-y-3 sm:space-y-4 max-w-lg mx-auto">
                 {loadingSteps.map((step, index) => {
                   const StepIcon = step.icon;
                   const isActive = currentStep === index;
@@ -118,7 +118,7 @@ export function ModalEvaluacionesCreadas({
                   return (
                     <div 
                       key={index}
-                      className={`flex items-center space-x-4 p-3 rounded-lg transition-all duration-500 ${
+                      className={`flex items-center space-x-3 sm:space-x-4 p-3 rounded-lg transition-all duration-500 ${
                         isActive 
                           ? 'bg-blue-50 border-2 border-blue-200 scale-105 shadow-lg' 
                           : isCompleted
@@ -176,7 +176,7 @@ export function ModalEvaluacionesCreadas({
               <div className="flex flex-col items-center text-center space-y-4">
                 {/* Animación de éxito */}
                 <div className="relative">
-                  <div className="w-20 h-20 bg-gradient-to-br from-green-100 to-green-200 rounded-full flex items-center justify-center animate-bounce">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-green-100 to-green-200 rounded-full flex items-center justify-center animate-bounce">
                     <CheckCircle className="w-10 h-10 text-green-600" />
                   </div>
                   {/* Efectos de celebración */}
@@ -186,7 +186,7 @@ export function ModalEvaluacionesCreadas({
                 </div>
                 
                 <div className="space-y-2">
-                  <DialogTitle className="text-2xl font-bold text-gray-900">
+                  <DialogTitle className="text-xl sm:text-2xl font-bold text-gray-900">
                     ¡Evaluaciones creadas exitosamente!
                   </DialogTitle>
                   <p className="text-green-600 font-medium">
@@ -196,26 +196,26 @@ export function ModalEvaluacionesCreadas({
               </div>
             </DialogHeader>
             
-            <div className="py-6 space-y-6">
+            <div className="py-4 sm:py-6 space-y-5 sm:space-y-6">
               <div className="text-center">
-                <p className="text-gray-600 text-lg">
+                <p className="text-gray-600 text-sm sm:text-lg">
                   Se generaron <span className="font-bold text-gray-900">{evaluaciones.length}</span> evaluaciones para tus materias:
                 </p>
               </div>
               
               {/* Lista de evaluaciones con animaciones de entrada */}
-              <div className="space-y-3 max-h-64 overflow-y-auto">
+              <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
                 {evaluaciones.map((ev, idx) => (
                   <div 
                     key={idx}
-                    className="flex items-center space-x-4 p-4 bg-white border-2 border-gray-100 rounded-xl hover:border-blue-200 hover:shadow-md transition-all duration-300 animate-fade-in-up"
+                    className="flex items-center space-x-3 sm:space-x-4 p-3 sm:p-4 bg-white border-2 border-gray-100 rounded-xl hover:border-blue-200 hover:shadow-md transition-all duration-300 animate-fade-in-up"
                     style={{ animationDelay: `${idx * 100}ms` }}
                   >
                     <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
                       <BookOpen className="w-6 h-6 text-blue-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-gray-900 truncate text-lg">
+                      <h4 className="font-bold text-gray-900 truncate text-base sm:text-lg">
                         {ev.materia.nombre}
                       </h4>
                       <div className="flex items-center space-x-2 text-sm text-gray-600 mt-1">

@@ -66,21 +66,21 @@ export default function EstudianteDashboard() {
 
   return (
     <div className="">
-      <main className="container mx-auto px-4 md:px-8 py-8 max-w-7xl">
+      <main className="container mx-auto px-3 sm:px-4 md:px-8 py-4 sm:py-8 max-w-7xl">
 
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-10">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 sm:gap-6 mb-6 sm:mb-10">
 
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-3xl bg-gray-900 flex items-center justify-center shadow-lg">
-              <GraduationCap className="text-white w-7 h-7" />
+          <div className="flex items-start sm:items-center gap-3 sm:gap-4">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl sm:rounded-3xl bg-gray-900 flex items-center justify-center shadow-lg shrink-0">
+              <GraduationCap className="text-white w-6 h-6 sm:w-7 sm:h-7" />
             </div>
 
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
                 Evaluaciones Académicas
               </h1>
-              <p className="text-gray-500 mt-1">
+              <p className="text-gray-500 mt-1 text-sm sm:text-base">
                 Selecciona una materia y evalúa el desempeño del docente
               </p>
             </div>
@@ -94,7 +94,7 @@ export default function EstudianteDashboard() {
             {evaluaciones.length === 0 ? (
               <EmptyState />
             ) : (
-              <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-7">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-7">
                 {evaluaciones.map(e => (
                   <EvaluationCard key={e.id} evaluacion={e} />
                 ))}

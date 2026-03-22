@@ -14,7 +14,7 @@ import type { ApiResponse } from '../../types/api.types';
 export interface ConfiguracionTipo {
   id: number;
   tipo_id: number;
-  tipo_form_id: number;
+  tipo_form_id?: number;
   tipo_form?: {
     id: number;
     nombre: string;
@@ -31,7 +31,16 @@ export interface ConfiguracionTipo {
     rol_mix_id: number;
     rol_origen_id: number;
     origen: string;
+    nombre?: string;
   }>;
+  scopes?: CfgTScopeItem[];
+  cfg_t_rel?: {
+    id: number;
+    cfg_eval_id: number;
+    cfg_autoeval_id: number;
+    pareja_cfg_t_id: number;
+    rol_en_rel: "EVAL" | "AUTOEVAL";
+  } | null;
   tipo_evaluacion: {
     id: number;
     categoria: {
@@ -55,6 +64,52 @@ export interface CreateConfiguracionTipoInput {
   es_cmt_gen?: boolean;
   es_cmt_gen_oblig?: boolean;
   es_activo?: boolean;
+}
+
+export interface CreateCfgTScopeInput {
+  sede_id?: number | null;
+  periodo_id: number;
+  programa_id?: number | null;
+  semestre_id?: number | null;
+  grupo_id?: number | null;
+}
+
+export interface CfgTScopeItem {
+  id: number;
+  cfg_t_id: number;
+  sede_id?: number | null;
+  sede_nombre?: string | null;
+  periodo_id: number;
+  periodo_nombre?: string | null;
+  programa_id?: number | null;
+  programa_nombre?: string | null;
+  semestre_id?: number | null;
+  semestre_nombre?: string | null;
+  grupo_id?: number | null;
+  grupo_nombre?: string | null;
+}
+
+export interface CreateCfgTRoleInput {
+  rol_mix_id: number;
+}
+
+export interface CreateCfgTFullInput extends CreateConfiguracionTipoInput {
+  genera_autoeval?: boolean;
+  autoeval_tipo_form_id?: number | null;
+  autoeval_rol_mix_ids?: number[] | null;
+  scopes: CreateCfgTScopeInput[];
+  roles: CreateCfgTRoleInput[];
+}
+
+export interface CreateCfgTFullResponse {
+  cfg_eval: {
+    id: number;
+  } & Record<string, any>;
+  cfg_autoeval: ({
+    id: number;
+  } & Record<string, any>) | null;
+  relation: Record<string, any> | null;
+  scope_count: number;
 }
 
 export interface UpdateConfiguracionTipoInput {
@@ -202,6 +257,22 @@ class ConfiguracionEvaluacionService extends BaseService<
   }
 
   /**
+   * Crear configuración completa (cfg_t + scopes + roles + autoevaluación opcional)
+   * POST /cfg/t/full
+   */
+  async createFull(payload: CreateCfgTFullInput): Promise<ApiResponse<CreateCfgTFullResponse>> {
+    return this.executeAsync(
+      () => httpClient.post<CreateCfgTFullResponse>('/cfg/t/full', payload),
+      {
+        cfg_eval: { id: 0 },
+        cfg_autoeval: null,
+        relation: null,
+        scope_count: 0,
+      }
+    );
+  }
+
+  /**
    * Obtener aspectos con sus escalas configuradas para una configuración
    * GET /cfg/t/{id}/a-e
    */
@@ -273,6 +344,17 @@ class ConfiguracionEvaluacionService extends BaseService<
   async getEvaluacionesByCfgT(id: number): Promise<ApiResponse<EvalByUserItem[]>> {
     return this.executeAsync(
       () => httpClient.get<EvalByUserItem[]>(`/cfg/t/${id}/evals`),
+      []
+    );
+  }
+
+  /**
+   * Obtener scopes por cfg_t
+   * GET /cfg/t/{id}/scope
+   */
+  async getScopesByCfgT(id: number): Promise<ApiResponse<CfgTScopeItem[]>> {
+    return this.executeAsync(
+      () => httpClient.get<CfgTScopeItem[]>(`/cfg/t/${id}/scope`),
       []
     );
   }

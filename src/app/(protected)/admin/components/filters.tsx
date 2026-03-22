@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import type { ComponentType } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -32,7 +32,7 @@ import {
 } from "lucide-react"
 import { configuracionEvaluacionService } from "@/src/api"
 import { filterService } from "@/src/api/services/filter/filter.service"
-import type { ConfiguracionTipo } from "@/src/api/services/app/cfg-t.service"
+import type { ConfiguracionTipo, CfgTScopeItem } from "@/src/api/services/app/cfg-t.service"
 import type { ApiResponse, FiltrosState } from "../types"
 
 // ============================================================================
@@ -219,6 +219,7 @@ export default function Filtros({
   onLimpiarFiltros,
   loading = false,
 }: FiltrosProps) {
+  const lastAppliedScopeKeyRef = useRef<string>('')
   const [configuraciones, setConfiguraciones] = useState<ConfiguracionTipo[]>([])
   const [periodos, setPeriodos] = useState<string[]>([])
   const [sedes, setSedes] = useState<string[]>([])
@@ -227,6 +228,20 @@ export default function Filtros({
   const [grupos, setGrupos] = useState<string[]>([])
   const [loadingData, setLoadingData] = useState(true)
   const [configOpen, setConfigOpen] = useState(false)
+
+  const aplicarScopeEnFiltros = useCallback(
+    (baseFiltros: FiltrosState, scope?: CfgTScopeItem): FiltrosState => {
+      return {
+        ...baseFiltros,
+        periodoSeleccionado: scope?.periodo_nombre ?? '',
+        sedeSeleccionada: scope?.sede_nombre ?? '',
+        programaSeleccionado: scope?.programa_nombre ?? '',
+        semestreSeleccionado: scope?.semestre_nombre ?? '',
+        grupoSeleccionado: scope?.grupo_nombre ?? '',
+      }
+    },
+    []
+  )
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -273,6 +288,22 @@ export default function Filtros({
           }
         }
 
+        const configInicial = configuracionesData.find(
+          (config) => config.id === nuevosFiltros.configuracionSeleccionada
+        )
+        const filtrosConScope = aplicarScopeEnFiltros(nuevosFiltros, configInicial?.scopes?.[0])
+
+        if (
+          filtrosConScope.periodoSeleccionado !== nuevosFiltros.periodoSeleccionado ||
+          filtrosConScope.sedeSeleccionada !== nuevosFiltros.sedeSeleccionada ||
+          filtrosConScope.programaSeleccionado !== nuevosFiltros.programaSeleccionado ||
+          filtrosConScope.semestreSeleccionado !== nuevosFiltros.semestreSeleccionado ||
+          filtrosConScope.grupoSeleccionado !== nuevosFiltros.grupoSeleccionado
+        ) {
+          Object.assign(nuevosFiltros, filtrosConScope)
+          hasChanges = true
+        }
+
         if (hasChanges && mounted) {
           onFiltrosChange(nuevosFiltros)
         }
@@ -307,11 +338,6 @@ export default function Filtros({
         if (mounted) {
           setSedes(sedesData)
           
-          // Seleccionar automáticamente la primera sede si no hay ninguna seleccionada
-          // y hay período seleccionado (cascada)
-          if (!filtros.sedeSeleccionada && sedesData.length > 0 && filtros.periodoSeleccionado) {
-            onFiltrosChange({ ...filtros, sedeSeleccionada: sedesData[0] })
-          }
         }
 
         // Cargar programas si hay sede seleccionada
@@ -395,6 +421,52 @@ export default function Filtros({
       mounted = false
     }
   }, [filtros.programaSeleccionado, filtros.semestreSeleccionado, filtros.sedeSeleccionada, filtros.periodoSeleccionado, onFiltrosChange])
+
+  // Aplicar scope apenas llegue de la configuración seleccionada
+  useEffect(() => {
+    if (!filtros.configuracionSeleccionada || !configuraciones.length) {
+      lastAppliedScopeKeyRef.current = ''
+      return
+    }
+
+    const configSeleccionada = configuraciones.find(
+      (config) => config.id === filtros.configuracionSeleccionada
+    )
+    const scope = configSeleccionada?.scopes?.[0]
+
+    if (!configSeleccionada) {
+      lastAppliedScopeKeyRef.current = 'no-config'
+      return
+    }
+
+    const scopeKey = [
+      configSeleccionada.id,
+      scope?.id ?? 'no-scope',
+      scope?.periodo_nombre ?? '',
+      scope?.sede_nombre ?? '',
+      scope?.programa_nombre ?? '',
+      scope?.semestre_nombre ?? '',
+      scope?.grupo_nombre ?? '',
+    ].join('|')
+
+    if (lastAppliedScopeKeyRef.current === scopeKey) return
+
+    const nuevosFiltros = aplicarScopeEnFiltros(filtros, scope)
+
+    const huboCambios =
+      nuevosFiltros.periodoSeleccionado !== filtros.periodoSeleccionado ||
+      nuevosFiltros.sedeSeleccionada !== filtros.sedeSeleccionada ||
+      nuevosFiltros.programaSeleccionado !== filtros.programaSeleccionado ||
+      nuevosFiltros.semestreSeleccionado !== filtros.semestreSeleccionado ||
+      nuevosFiltros.grupoSeleccionado !== filtros.grupoSeleccionado
+
+    if (huboCambios) {
+      lastAppliedScopeKeyRef.current = scopeKey
+      onFiltrosChange(nuevosFiltros)
+    } else {
+      lastAppliedScopeKeyRef.current = scopeKey
+    }
+  }, [filtros, configuraciones, onFiltrosChange, aplicarScopeEnFiltros])
 
   // Handlers
   const handleFiltroChange = useCallback(
@@ -497,7 +569,8 @@ export default function Filtros({
                   {configuraciones.map((config) => (
                     <SelectItem key={config.id} value={String(config.id)}>
                       <span className="text-xs">
-                        {config.tipo_evaluacion?.tipo?.nombre}{" "}
+                        {config.tipo_evaluacion?.tipo?.nombre}
+                        {config.tipo_form?.nombre ? ` · ${config.tipo_form.nombre}` : ""}{" "}
                         {config.es_activo && "✓"}
                       </span>
                     </SelectItem>

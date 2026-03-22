@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -10,11 +9,9 @@ import {
   Edit,
   Trash2,
   ChevronRight,
-  AlertCircle,
   FileText,
   Calendar,
   MessageSquare,
-  ShieldCheck,
   Settings2,
   Trophy,
   Clock,
@@ -32,9 +29,8 @@ import {
 import { ConfiguracionAspectoView } from "./ConfiguracionAspectoView";
 import { ConfiguracionEscalaView } from "./ConfiguracionEscalaView";
 import { AeView } from "./AeView";
-import { RolesConfiguracionView } from "./RolesConfiguracionView";
 import { ModalConfiguracionTipo } from "./ModalConfiguracionTipo";
-import { rolService, cfgTRolService, type RolMixto, type CfgTRol, type RolAsignado } from "@/src/api";
+import { type RolMixto } from "@/src/api";
 
 interface ConfiguracionViewProps {
   aspectos: Aspecto[];
@@ -62,7 +58,6 @@ export function ConfiguracionView({
   setModalAe,
   handleEliminarConfiguracion,
   refreshData,
-  rolesDisponibles = [],
 }: ConfiguracionViewProps) {
   const { toast } = useToast();
   const [modalConfiguracionTipo, setModalConfiguracionTipo] = useState({
@@ -78,17 +73,12 @@ export function ConfiguracionView({
   const [configuracionAspectos, setConfiguracionAspectos] = useState<CfgAItem[]>([]);
   const [configuracionEscalas, setConfiguracionEscalas] = useState<CfgEItem[]>([]);
   
-  // Estados para roles
-  const [rolesAsignados, setRolesAsignados] = useState<RolAsignado[]>([]);
-  const [rolesDispList, setRolesDispList] = useState<RolMixto[]>(rolesDisponibles);
-  
   // Pasos del proceso
   const [steps, setSteps] = useState<ConfigurationStep[]>([
     { id: 1, title: "Base", description: "Definición inicial", completed: false },
     { id: 2, title: "Aspectos", description: "Criterios evaluación", completed: false },
     { id: 3, title: "Escalas", description: "Rangos de valor", completed: false },
     { id: 4, title: "Relación", description: "Vinculación A/E", completed: false },
-    { id: 5, title: "Roles", description: "Permisos acceso", completed: false },
   ]);
 
   useEffect(() => {
@@ -101,17 +91,40 @@ export function ConfiguracionView({
     }
   }, [selectedConfig]);
 
-  useEffect(() => {
-    if (rolesDisponibles.length > 0) {
-      setRolesDispList(rolesDisponibles);
-    }
-  }, [rolesDisponibles]);
-
   const extractItems = <T,>(payload: any): T[] => {
     if (Array.isArray(payload)) return payload as T[];
     if (Array.isArray(payload?.data)) return payload.data as T[];
     if (Array.isArray(payload?.items)) return payload.items as T[];
     return [];
+  };
+
+  const formatScopeSummary = (config: ConfiguracionTipo) => {
+    if (!config.scopes?.length) return "Sin scopes";
+    const scope = config.scopes[0];
+    
+    const parts: string[] = [];
+    
+    if (scope.sede_nombre) {
+      parts.push(scope.sede_nombre);
+    }
+    
+    if (scope.periodo_nombre) {
+      parts.push(scope.periodo_nombre);
+    }
+    
+    if (scope.programa_nombre) {
+      parts.push(scope.programa_nombre);
+    }
+    
+    if (scope.semestre_nombre) {
+      parts.push(scope.semestre_nombre);
+    }
+    
+    if (scope.grupo_nombre) {
+      parts.push(scope.grupo_nombre);
+    }
+    
+    return parts.length > 0 ? parts.join(" · ") : "Sin datos de scope";
   };
 
   const loadData = async () => {
@@ -121,8 +134,13 @@ export function ConfiguracionView({
         const configs = extractItems<ConfiguracionTipo>(configResponse.data);
         setConfiguraciones(configs);
         
-        if (configs.length > 0 && !selectedConfig) {
-          setSelectedConfig(configs[0]);
+        if (configs.length > 0) {
+          if (!selectedConfig) {
+            setSelectedConfig(configs[0]);
+          } else {
+            const selectedUpdated = configs.find((cfg) => cfg.id === selectedConfig.id) || null;
+            setSelectedConfig(selectedUpdated);
+          }
         }
       }
     } catch (error) {
@@ -157,20 +175,11 @@ export function ConfiguracionView({
         ? aeResponse.data.aspectos.some((a: AspectoConEscalas) => a.opciones.length > 0)
         : false;
 
-      const rolesResponse = await cfgTRolService.getRolesByConfiguracion(configId);
-      const hasRoles = rolesResponse.success && rolesResponse.data && rolesResponse.data.length > 0;
-      if (hasRoles) {
-        setRolesAsignados(rolesResponse.data);
-      } else {
-        setRolesAsignados([]);
-      }
-
       updateSteps(
         true,
         cfgA.length > 0,
         cfgE.length > 0,
-        hasAE,
-        hasRoles
+        hasAE
       );
     } catch (error) {
       console.error("Error loading config details:", error);
@@ -180,13 +189,12 @@ export function ConfiguracionView({
     }
   };
 
-  const updateSteps = (hasConfig: boolean, hasAspectos: boolean, hasEscalas: boolean, hasAE: boolean, hasRoles: boolean = false) => {
+  const updateSteps = (hasConfig: boolean, hasAspectos: boolean, hasEscalas: boolean, hasAE: boolean) => {
     setSteps([
       { id: 1, title: "Base", description: "Definición inicial", completed: hasConfig },
       { id: 2, title: "Aspectos", description: "Criterios evaluación", completed: hasAspectos },
       { id: 3, title: "Escalas", description: "Rangos de valor", completed: hasEscalas },
       { id: 4, title: "Relación", description: "Vinculación A/E", completed: hasAE },
-      { id: 5, title: "Roles", description: "Permisos acceso", completed: hasRoles },
     ]);
   };
 
@@ -239,12 +247,52 @@ export function ConfiguracionView({
     await refreshData();
   };
 
-  const handleRolesUpdated = async () => {
-    if (selectedConfig) {
-      await loadConfigDetails(selectedConfig.id);
+  const configGroups = (() => {
+    const grouped: ConfiguracionTipo[][] = [];
+    const visited = new Set<number>();
+    const byId = new Map(configuraciones.map((cfg) => [cfg.id, cfg]));
+    const indexById = new Map(configuraciones.map((cfg, index) => [cfg.id, index]));
+    const pairById = new Map<number, number>();
+
+    for (const cfg of configuraciones) {
+      const pairId = cfg.cfg_t_rel?.pareja_cfg_t_id;
+      if (!pairId) continue;
+
+      const pairCfg = byId.get(pairId);
+      if (!pairCfg) continue;
+
+      pairById.set(cfg.id, pairCfg.id);
+      if (!pairById.has(pairCfg.id)) {
+        pairById.set(pairCfg.id, cfg.id);
+      }
     }
-    await refreshData();
-  };
+
+    for (const config of configuraciones) {
+      if (visited.has(config.id)) continue;
+
+      const pairId = pairById.get(config.id);
+      if (pairId) {
+        const pairConfig = byId.get(pairId);
+        if (pairConfig && !visited.has(pairConfig.id)) {
+          const pairGroup = [config, pairConfig].sort((a, b) => {
+            const indexA = indexById.get(a.id) ?? 0;
+            const indexB = indexById.get(b.id) ?? 0;
+            return indexA - indexB;
+          });
+
+          grouped.push(pairGroup);
+          visited.add(config.id);
+          visited.add(pairConfig.id);
+          continue;
+        }
+      }
+
+      grouped.push([config]);
+      visited.add(config.id);
+    }
+
+    return grouped;
+  })();
 
   return (
     <div className="space-y-10 animate-in fade-in duration-1000">
@@ -255,7 +303,7 @@ export function ConfiguracionView({
           <h3 className="text-xs font-semibold text-slate-400 leading-none">Workflow de Configuración</h3>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {steps.map((step, index) => (
             <div key={step.id} className="relative group">
               <div className={`p-5 rounded-[2rem] border transition-all duration-500 ${
@@ -317,78 +365,164 @@ export function ConfiguracionView({
                   <p className="text-xs font-medium text-slate-400">Sin Registros</p>
                 </div>
               ) : (
-                configuraciones.map((config) => {
-                  const isSelected = selectedConfig?.id === config.id;
+                configGroups.map((group) => {
+                  const isPairGroup = group.length > 1;
                   return (
                     <div
-                      key={config.id}
-                      onClick={() => handleSelectConfig(config)}
-                      className={`group cursor-pointer p-6 rounded-[2.5rem] border transition-all duration-500 ${
-                        isSelected
-                          ? 'border-indigo-200 bg-indigo-50/30 shadow-xl shadow-indigo-100/20'
-                          : 'border-slate-100 bg-white hover:border-slate-200'
-                      }`}
+                      key={isPairGroup ? `pair-${group.map((cfg) => cfg.id).join("-")}` : group[0].id}
+                      className={isPairGroup ? "rounded-[2.75rem] border-2 border-indigo-200 bg-indigo-50/20 p-1 space-y-4" : "space-y-4"}
                     >
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-start gap-4">
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-slate-900 text-sm truncate">
-                              {config.tipo_evaluacion?.tipo?.nombre || `Config #${config.id}`}
-                            </h4>
-                            <div className="flex items-center gap-2 mt-1">
-                               <Badge className="bg-white border border-slate-200 text-slate-500 rounded-lg text-xs font-semibold px-2 h-5">
-                                 {config.tipo_form?.nombre || "General"}
-                               </Badge>
-                               <span className="text-xs font-medium text-slate-300">ID: {config.id}</span>
-                            </div>
-                          </div>
-                          <div className={`h-2.5 w-2.5 rounded-full shadow-sm transition-all duration-500 ${config.es_activo ? 'bg-emerald-500' : 'bg-slate-200'}`} />
-                        </div>
+                      {group.map((config) => {
+                        const isSelected = selectedConfig?.id === config.id;
 
-                        <div className="grid grid-cols-2 gap-4 bg-white/50 p-3 rounded-2xl border border-slate-100/50">
-                          <div className="space-y-1">
-                            <span className="text-xs font-medium text-slate-300">Apertura</span>
-                            <div className="flex items-center gap-1.5 text-slate-600">
-                               <Calendar className="h-3 w-3" />
-                               <span className="text-[10px] font-bold">{new Date(config.fecha_inicio).toLocaleDateString()}</span>
-                            </div>
-                          </div>
-                          <div className="space-y-1">
-                            <span className="text-xs font-medium text-slate-300">Cierre</span>
-                            <div className="flex items-center gap-1.5 text-slate-600">
-                               <Clock className="h-3 w-3" />
-                               <span className="text-[10px] font-bold">{new Date(config.fecha_fin).toLocaleDateString()}</span>
-                            </div>
-                          </div>
-                        </div>
+                        return (
+                          <div
+                            key={config.id}
+                            onClick={() => handleSelectConfig(config)}
+                            className={`group cursor-pointer p-6 rounded-[2.5rem] border transition-all duration-500 ${
+                              isSelected
+                                ? 'border-indigo-200 bg-indigo-50/30 shadow-xl shadow-indigo-100/20'
+                                : 'border-slate-100 bg-white hover:border-slate-200'
+                            }`}
+                          >
+                            <div className="space-y-4">
+                              <div className="rounded-2xl border border-slate-100 bg-white/80 p-4 space-y-3">
+                                <div className="flex justify-between items-start gap-3">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                      {config.tipo_evaluacion?.categoria?.nombre || "Sin categoría"}
+                                    </p>
+                                    <h4 className="font-bold text-slate-900 text-sm leading-tight line-clamp-2">
+                                      {config.tipo_evaluacion?.tipo?.nombre || `Config #${config.id}`}
+                                    </h4>
+                                  </div>
+                                  <Badge className={`rounded-lg px-2 h-5 text-[10px] font-semibold ${
+                                    config.es_activo ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"
+                                  }`}>
+                                    {config.es_activo ? "Activa" : "Inactiva"}
+                                  </Badge>
+                                </div>
 
-                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setModalConfiguracionTipo({ isOpen: true, configuracion: config });
-                            }}
-                            className="flex-1 h-9 rounded-xl hover:bg-white hover:text-indigo-600 font-semibold text-sm shadow-sm border border-transparent hover:border-slate-100"
-                          >
-                            <Edit className="h-3 w-3 mr-2" />
-                            Editar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteConfig(config);
-                            }}
-                            className="flex-1 h-9 rounded-xl hover:bg-rose-50 hover:text-rose-600 font-semibold text-sm"
-                          >
-                            <Trash2 className="h-3 w-3 mr-2" />
-                            Eliminar
-                          </Button>
-                        </div>
-                      </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Badge className="bg-white border border-slate-200 text-slate-600 rounded-lg text-[10px] font-semibold px-2 h-5">
+                                    {config.tipo_form?.nombre || "General"}
+                                  </Badge>
+                                  {config.cfg_t_rel?.pareja_cfg_t_id ? (
+                                    <Badge className="bg-indigo-50 text-indigo-700 border-none rounded-lg text-[10px] font-semibold px-2 h-5">
+                                      Pareja #{config.cfg_t_rel.pareja_cfg_t_id}
+                                    </Badge>
+                                  ) : null}
+                                  <span className="text-[10px] font-medium text-slate-400">ID: {config.id}</span>
+                                </div>
+
+                                <div className="text-[10px] text-slate-600 leading-relaxed">
+                                  <p>
+                                    Rol: <span className="font-semibold text-slate-700">{config.rolesRequeridos?.[0]?.nombre || "-"}</span>
+                                  </p>
+                                  <p className="line-clamp-2">
+                                    Scope: <span className="font-semibold text-slate-700">{formatScopeSummary(config)}</span>
+                                  </p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="rounded-xl bg-slate-50 border border-slate-100 p-2.5">
+                                    <span className="text-[10px] font-medium text-slate-400">Inicia</span>
+                                    <div className="flex items-center gap-1.5 text-slate-700 mt-1">
+                                      <Calendar className="h-3 w-3" />
+                                      <span className="text-[11px] font-semibold">{new Date(config.fecha_inicio).toLocaleDateString()}</span>
+                                    </div>
+                                  </div>
+                                  <div className="rounded-xl bg-slate-50 border border-slate-100 p-2.5">
+                                    <span className="text-[10px] font-medium text-slate-400">Termina</span>
+                                    <div className="flex items-center gap-1.5 text-slate-700 mt-1">
+                                      <Clock className="h-3 w-3" />
+                                      <span className="text-[11px] font-semibold">{new Date(config.fecha_fin).toLocaleDateString()}</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 space-y-1.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <MessageSquare className="h-3 w-3 text-slate-500" />
+                                    <span className="text-[10px] font-semibold text-slate-600">Comentario general</span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-2 text-[10px]">
+                                    <span className={config.es_cmt_gen ? "text-blue-700 font-semibold" : "text-slate-500"}>
+                                      {config.es_cmt_gen ? "Activo" : "Inactivo"}
+                                    </span>
+                                    <div className="flex items-center gap-1.5">
+                                      <Button
+                                        size="sm"
+                                        variant={config.es_cmt_gen ? "default" : "outline"}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleToggleField(config.id, "es_cmt_gen");
+                                        }}
+                                        className="h-6 rounded-md px-2 text-[9px] font-semibold"
+                                      >
+                                        {config.es_cmt_gen ? "Desact." : "Activar"}
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant={config.es_cmt_gen_oblig ? "default" : "outline"}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleToggleField(config.id, "es_cmt_gen_oblig");
+                                        }}
+                                        disabled={!config.es_cmt_gen}
+                                        className="h-6 rounded-md px-2 text-[9px] font-semibold"
+                                      >
+                                        {config.es_cmt_gen_oblig ? "Oblig." : "Obligar"}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 gap-2 pt-2">
+                                <Button
+                                  size="sm"
+                                  variant={config.es_activo ? "default" : "outline"}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleField(config.id, "es_activo");
+                                  }}
+                                  className="h-8 rounded-lg text-[10px] font-semibold"
+                                >
+                                  {config.es_activo ? "Activada" : "Activar"}
+                                </Button>
+                              </div>
+
+                              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setModalConfiguracionTipo({ isOpen: true, configuracion: config });
+                                  }}
+                                  className="flex-1 h-9 rounded-xl hover:bg-white hover:text-indigo-600 font-semibold text-sm shadow-sm border border-transparent hover:border-slate-100"
+                                >
+                                  <Edit className="h-3 w-3 mr-2" />
+                                  Editar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteConfig(config);
+                                  }}
+                                  className="flex-1 h-9 rounded-xl hover:bg-rose-50 hover:text-rose-600 font-semibold text-sm"
+                                >
+                                  <Trash2 className="h-3 w-3 mr-2" />
+                                  Eliminar
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 })
@@ -413,72 +547,9 @@ export function ConfiguracionView({
             </div>
           ) : (
             <div className="space-y-8 animate-in slide-in-from-right-4 duration-700">
-              {/* Feature Toggles Card */}
-              <div className="bg-indigo-600 rounded-[2.5rem] p-8 text-white shadow-xl shadow-indigo-200">
-                 <div className="flex items-center justify-between mb-8">
-                    <div>
-                       <h3 className="text-lg font-bold tracking-tight leading-none">Centro de Comando</h3>
-                       <p className="text-indigo-100 text-sm font-medium mt-2">Parámetros de ejecución en tiempo real</p>
-                    </div>
-                    <Badge className="bg-white/20 hover:bg-white/30 text-white border-white/20 rounded-xl px-4 py-1.5 font-semibold text-sm backdrop-blur-md">
-                       Estado: {selectedConfig.es_activo ? "OPERATIVO" : "EN PAUSA"}
-                    </Badge>
-                 </div>
-
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <button 
-                      onClick={() => handleToggleField(selectedConfig.id, "es_activo")}
-                      className={`flex items-center justify-between p-5 rounded-2xl transition-all duration-500 border backdrop-blur-sm ${
-                        selectedConfig.es_activo 
-                          ? 'bg-white/10 border-white/20 text-white hover:bg-white/20' 
-                          : 'bg-black/10 border-white/10 text-white/50'
-                      }`}
-                    >
-                       <span className="text-sm font-semibold">Disponibilidad</span>
-                       <div className={`h-4 w-4 rounded-full border-2 border-current flex items-center justify-center transition-all ${
-                         selectedConfig.es_activo ? 'bg-emerald-400 border-emerald-400' : ''
-                       }`}>
-                          {selectedConfig.es_activo && <CheckCircle2 className="h-3 w-3 text-indigo-900" />}
-                       </div>
-                    </button>
-
-                    <button 
-                      onClick={() => handleToggleField(selectedConfig.id, "es_cmt_gen")}
-                      className={`flex items-center justify-between p-5 rounded-2xl transition-all duration-500 border backdrop-blur-sm ${
-                        selectedConfig.es_cmt_gen 
-                          ? 'bg-white/10 border-white/20 text-white hover:bg-white/20' 
-                          : 'bg-black/10 border-white/10 text-white/50'
-                      }`}
-                    >
-                       <span className="text-sm font-semibold">Feedback Libre</span>
-                       <div className={`h-4 w-4 rounded-full border-2 border-current flex items-center justify-center transition-all ${
-                         selectedConfig.es_cmt_gen ? 'bg-indigo-300 border-indigo-300' : ''
-                       }`}>
-                          {selectedConfig.es_cmt_gen && <MessageSquare className="h-2.5 w-2.5 text-indigo-900" />}
-                       </div>
-                    </button>
-
-                    <button 
-                      onClick={() => handleToggleField(selectedConfig.id, "es_cmt_gen_oblig")}
-                      className={`flex items-center justify-between p-5 rounded-2xl transition-all duration-500 border backdrop-blur-sm ${
-                        selectedConfig.es_cmt_gen_oblig 
-                          ? 'bg-white/10 border-white/20 text-white hover:bg-white/20' 
-                          : 'bg-black/10 border-white/10 text-white/50'
-                      }`}
-                    >
-                       <span className="text-xs font-semibold">Feedback Forzado</span>
-                       <div className={`h-4 w-4 rounded-full border-2 border-current flex items-center justify-center transition-all ${
-                         selectedConfig.es_cmt_gen_oblig ? 'bg-rose-300 border-rose-300' : ''
-                       }`}>
-                          {selectedConfig.es_cmt_gen_oblig && <ShieldCheck className="h-2.5 w-2.5 text-rose-900" />}
-                       </div>
-                    </button>
-                 </div>
-              </div>
-
               {/* Functional Tabs */}
               <Tabs defaultValue="aspectos" className="w-full">
-                <TabsList className="bg-slate-100/50 p-1.5 rounded-[2rem] border border-slate-200/50 grid grid-cols-4 h-14">
+                <TabsList className="bg-slate-100/50 p-1.5 rounded-[2rem] border border-slate-200/50 grid grid-cols-3 h-14">
                   <TabsTrigger 
                     value="aspectos" 
                       className="rounded-[1.5rem] font-semibold text-sm data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm"
@@ -496,12 +567,6 @@ export function ConfiguracionView({
                       className="rounded-[1.5rem] font-semibold text-sm data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm"
                   >
                     Matriz A/E
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="roles" 
-                      className="rounded-[1.5rem] font-semibold text-sm data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm"
-                  >
-                    Permisos
                   </TabsTrigger>
                 </TabsList>
 
@@ -547,16 +612,6 @@ export function ConfiguracionView({
                         onSuccess: handleAspectosConfigured,
                       })}
                       onConfigUpdated={handleAspectosConfigured}
-                    />
-                  </TabsContent>
-
-                  <TabsContent value="roles" className="m-0 focus-visible:ring-0">
-                    <RolesConfiguracionView
-                      cfgTId={selectedConfig.id}
-                      rolesAsignados={rolesAsignados}
-                      rolesDisponibles={rolesDispList}
-                      onRoleAdded={handleRolesUpdated}
-                      onRoleRemoved={handleRolesUpdated}
                     />
                   </TabsContent>
                 </div>
