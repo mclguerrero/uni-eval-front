@@ -11,7 +11,11 @@ interface AspectosEvaluacionChartProps {
 }
 
 export function AspectosEvaluacionChart({ aspectos }: AspectosEvaluacionChartProps) {
-  if (!aspectos || !aspectos.aspectos || aspectos.aspectos.length === 0) {
+  const aspectosList = aspectos?.evaluacion_estudiantes?.aspectos ?? aspectos?.aspectos ?? [];
+  const promedioGeneral = aspectos?.evaluacion_estudiantes?.promedio_general ?? aspectos?.promedio;
+  const desviacionGeneral = aspectos?.evaluacion_estudiantes?.desviacion ?? aspectos?.desviacion;
+
+  if (!aspectos || aspectosList.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -30,20 +34,23 @@ export function AspectosEvaluacionChart({ aspectos }: AspectosEvaluacionChartPro
 
   // Preparar datos para la gráfica
   // Escala de evaluación: 0-5
-  const chartData = aspectos.aspectos.map((aspecto) => ({
-    nombre: aspecto.nombre,
+  const chartData = aspectosList.map((aspecto) => {
+    const maxScore = Math.max((aspecto.total_respuestas || 0) * 5, 1);
+    return {
+      nombre: aspecto.nombre ?? 'Sin nombre',
     aspecto_id: aspecto.aspecto_id,
-    porcentaje: (aspecto.suma / (aspecto.total_respuestas * 5)) * 100,
+      porcentaje: (aspecto.suma / maxScore) * 100,
     suma: aspecto.suma,
     total_respuestas: aspecto.total_respuestas,
-  }));
+    };
+  });
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Evaluación por Aspectos</CardTitle>
         <CardDescription>
-          Promedio General: <span className="font-bold text-blue-600">{aspectos.promedio?.toFixed(2) ?? 'N/A'}%</span>
+          Promedio General: <span className="font-bold text-blue-600">{promedioGeneral?.toFixed(2) ?? 'N/A'}</span>
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -119,18 +126,18 @@ export function AspectosEvaluacionChart({ aspectos }: AspectosEvaluacionChartPro
               <div>
                 <p className="text-xs text-muted-foreground">Promedio</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {aspectos.promedio?.toFixed(2) ?? 'N/A'}%
+                  {promedioGeneral?.toFixed(2) ?? 'N/A'}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Desviación</p>
                 <p className="text-2xl font-bold">
-                  {aspectos.desviacion?.toFixed(2) ?? 'N/A'}
+                  {desviacionGeneral?.toFixed(2) ?? 'N/A'}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Aspectos</p>
-                <p className="text-2xl font-bold">{aspectos.aspectos.length}</p>
+                <p className="text-2xl font-bold">{aspectosList.length}</p>
               </div>
             </div>
           </div>

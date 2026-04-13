@@ -17,6 +17,7 @@ interface MateriaCardProps {
   completion?: MateriaCompletionMetrics | null;
   docente: string;
   cfgT: number;
+  hasAutoevaluacionRelacion?: boolean;
 }
 
 export function MateriaCard({ 
@@ -25,13 +26,23 @@ export function MateriaCard({
   isSelected,
   completion,
   docente,
-  cfgT
+  cfgT,
+  hasAutoevaluacionRelacion = false,
 }: MateriaCardProps) {
   const [isCompletionModalOpen, setIsCompletionModalOpen] = useState(false);
   const [isAspectosModalOpen, setIsAspectosModalOpen] = useState(false);
   const [pendingModalType, setPendingModalType] = useState<'aspectos' | 'completion' | null>(null);
   
   const hasMultipleGroups = materia.grupos && materia.grupos.length > 0;
+  const porcentajeCumplimiento = Number.isFinite(Number(materia.porcentaje_cumplimiento))
+    ? Number(materia.porcentaje_cumplimiento)
+    : 0;
+  const totalPendientes = Number.isFinite(Number(materia.total_pendientes))
+    ? Number(materia.total_pendientes)
+    : 0;
+  const promedioGeneral = Number.isFinite(Number(materia.promedio_general))
+    ? Number(materia.promedio_general)
+    : null;
 
   // Abre el modal apropiado cuando los datos están listos
   useEffect(() => {
@@ -86,19 +97,19 @@ export function MateriaCard({
         )}
         
         <Progress 
-          value={materia.porcentaje_cumplimiento} 
+          value={porcentajeCumplimiento} 
           className="h-2"
         />
         <div className="flex justify-between text-xs text-muted-foreground">
-          <span>{materia.porcentaje_cumplimiento}% completado</span>
-          <span>{materia.total_pendientes} pendientes</span>
+          <span>{porcentajeCumplimiento}% completado</span>
+          <span>{totalPendientes} pendientes</span>
         </div>
 
-        {materia.promedio_general !== null && (
+        {promedioGeneral !== null && (
           <div className="pt-2 border-t">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Promedio:</span>
-              <span className="font-bold text-lg">{materia.promedio_general.toFixed(2)}</span>
+              <span className="font-bold text-lg">{promedioGeneral.toFixed(2)}</span>
             </div>
           </div>
         )}
@@ -136,6 +147,7 @@ export function MateriaCard({
           onClose={() => setIsAspectosModalOpen(false)}
           docente={docente}
           cfgT={cfgT}
+          hasAutoevaluacionRelacion={hasAutoevaluacionRelacion}
           codigoMateria={materia.codigo_materia}
           materiaNombre={materia.nombre_materia}
         />

@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import AspectoMetricsModal from "../docente/components/AspectoMetricsModal"
 import CompletionModal from "./CompletionModal"
 import { metricService } from "@/src/api/services/metric/metric.service"
+import { configuracionEvaluacionService } from "@/src/api/services/app/cfg-t.service"
 import type { DocenteGeneralMetrics, DocenteMateriasMetrics, MateriaMetric } from "@/src/api/services/metric/metric.service"
 import type { FiltrosState } from "../types"
 
@@ -27,6 +28,7 @@ interface MateriasModalProps {
 export default function MateriasModal({ docente, filtros, onClose }: MateriasModalProps) {
   const [materiasData, setMateriasData] = useState<DocenteMateriasMetrics | null>(null)
   const [loading, setLoading] = useState(true)
+  const [hasAutoevaluacionRelacion, setHasAutoevaluacionRelacion] = useState(false)
   const [selectedMateria, setSelectedMateria] = useState<MateriaMetric | null>(null)
   const [showAspectoModal, setShowAspectoModal] = useState(false)
   const [showCompletionModal, setShowCompletionModal] = useState(false)
@@ -38,13 +40,21 @@ export default function MateriasModal({ docente, filtros, onClose }: MateriasMod
   const cargarMaterias = async () => {
     try {
       setLoading(true)
-      const response = await metricService.getDocenteMaterias(docente.docente, {
-        cfg_t: filtros.configuracionSeleccionada!,
-        sede: filtros.sedeSeleccionada || undefined,
-        periodo: filtros.periodoSeleccionado || undefined,
-        programa: filtros.programaSeleccionado || undefined,
-        semestre: filtros.semestreSeleccionado || undefined,
-      })
+      const cfgId = filtros.configuracionSeleccionada!
+
+      const [response, cfgResponse] = await Promise.all([
+        metricService.getDocenteMaterias(docente.docente, {
+          cfg_t: cfgId,
+          sede: filtros.sedeSeleccionada || undefined,
+          periodo: filtros.periodoSeleccionado || undefined,
+          programa: filtros.programaSeleccionado || undefined,
+          semestre: filtros.semestreSeleccionado || undefined,
+        }),
+        configuracionEvaluacionService.getById(cfgId),
+      ])
+
+      const configuracion = cfgResponse?.data
+      setHasAutoevaluacionRelacion(Boolean(configuracion?.cfg_t_rel))
 
       // Mantener las materias tal cual sin aplanar grupos
       setMateriasData(response)
@@ -256,6 +266,7 @@ export default function MateriasModal({ docente, filtros, onClose }: MateriasMod
           docente={docente}
           materia={selectedMateria}
           filtros={filtros}
+          hasAutoevaluacionRelacion={hasAutoevaluacionRelacion}
           onClose={() => {
             setShowAspectoModal(false)
             setSelectedMateria(null)

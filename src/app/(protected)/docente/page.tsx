@@ -291,6 +291,10 @@ interface MateriaCardProps {
 
 function MateriaCard({ materia, onClick, isSelected }: MateriaCardProps) {
   const hasMultipleGroups = materia.grupos && materia.grupos.length > 0;
+  const promedioMateria =
+    typeof materia.promedio_general === 'number' && Number.isFinite(materia.promedio_general)
+      ? materia.promedio_general
+      : null;
 
   return (
     <Card 
@@ -340,11 +344,11 @@ function MateriaCard({ materia, onClick, isSelected }: MateriaCardProps) {
           <span>{materia.total_pendientes} pendientes</span>
         </div>
 
-        {materia.promedio_general !== null && (
+        {promedioMateria !== null && (
           <div className="pt-2 border-t">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Promedio:</span>
-              <span className="font-bold text-lg">{materia.promedio_general.toFixed(2)}</span>
+              <span className="font-bold text-lg">{promedioMateria.toFixed(2)}</span>
             </div>
           </div>
         )}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { metricService } from '@/src/api/services/metric/metric.service';
+import { configuracionEvaluacionService } from '@/src/api/services/app/cfg-t.service';
 import type { 
   DocenteMateriasMetrics, 
   MateriaCompletionMetrics,
@@ -35,6 +36,7 @@ export default function MisMateriasPage() {
   const [selectedMateria, setSelectedMateria] = useState<string | null>(null);
   const [completionData, setCompletionData] = useState<MateriaCompletionMetrics | null>(null);
   const [aspectosData, setAspectosData] = useState<DocenteAspectosMetrics | null>(null);
+  const [hasAutoevaluacionRelacion, setHasAutoevaluacionRelacion] = useState(false);
 
   // Filtro y CFG_T dinámico
   const [filtro, setFiltro] = useState({ configuracionSeleccionada: null as number | null });
@@ -47,6 +49,27 @@ export default function MisMateriasPage() {
       setCfgT(filtro.configuracionSeleccionada);
     }
   }, [filtro.configuracionSeleccionada]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadCfgRelacion = async () => {
+      try {
+        const cfgResponse = await configuracionEvaluacionService.getById(cfgT);
+        if (!mounted) return;
+        setHasAutoevaluacionRelacion(Boolean(cfgResponse?.data?.cfg_t_rel));
+      } catch {
+        if (!mounted) return;
+        setHasAutoevaluacionRelacion(false);
+      }
+    };
+
+    loadCfgRelacion();
+
+    return () => {
+      mounted = false;
+    };
+  }, [cfgT]);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -166,6 +189,7 @@ export default function MisMateriasPage() {
               }
               docente={docente}
               cfgT={cfgT}
+              hasAutoevaluacionRelacion={hasAutoevaluacionRelacion}
               onClick={() => setSelectedMateria(materia.codigo_materia)}
             />
           ))}

@@ -70,21 +70,71 @@ export interface SummaryByPrograms {
 // Ranking Types
 export interface RankingItem {
   docente: string;
-  nombre_docente: string;
-  avg: number;
+  nombre_docente: string | null;
+  total_evaluaciones: number;
+  total_realizadas: number;
+  total_pendientes: number;
+  total_evaluaciones_registradas: number;
+  total_estudiantes_registrados: number;
+  porcentaje_cumplimiento: number;
+  score_rank: number;
+  promedio_docente: number;
+  promedio_evaluacion: number;
   adjusted: number;
-  realizados: number;
   universo: number;
+  desviacion_estandar: number | null;
+  eval?: DocenteEvalMetrics;
+  // Campos legacy usados por normalizacion local (encuesta/UI)
+  avg?: number;
+  realizados?: number;
+  factores?: {
+    v: number;
+    m: number;
+    global_avg: number;
+    participacion_promedio: number;
+    factor_participacion: number;
+    factor_confianza: number;
+  };
+  calculo?: {
+    promedio_docente: {
+      suma_puntajes: number;
+      total_respuestas: number;
+      formula: string;
+    };
+    adjusted: {
+      formula: string;
+    };
+    score_rank: {
+      formula: string;
+    };
+  };
+  sin_respuestas?: boolean;
 }
 
 export interface RankingResponse {
   ranking: RankingItem[];
+  meta?: {
+    m: number;
+    global_avg: number;
+    participacion_promedio: number;
+    total_docentes: number;
+    docentes_con_respuestas: number;
+    docentes_sin_respuestas: number;
+  };
 }
 
 // Docente Metrics Types
+export interface DocenteEvalMetrics {
+  total_respuestas: number | null;
+  total_cmt: number | null;
+  total_cmt_gen: number | null;
+  suma_cmt: number | null;
+  nota_final_ponderada: number | null;
+}
+
 export interface DocenteGeneralMetrics {
   docente: string;
-  nombre_docente?: string;
+  nombre_docente?: string | null;
   promedio_general: number | null;
   desviacion_general: number | null;
   total_evaluaciones: number;
@@ -95,6 +145,8 @@ export interface DocenteGeneralMetrics {
   total_aspectos: number;
   porcentaje_cumplimiento: number;
   suma: number;
+  nota_final_ponderada?: number | null;
+  eval?: DocenteEvalMetrics;
 }
 
 export interface AspectoMetric {
@@ -111,6 +163,9 @@ export interface AspectoGroupMetrics {
   suma_total: number;
   total_respuestas: number;
   promedio_general: number | null;
+  total_cmt?: number;
+  total_cmt_gen?: number;
+  suma_cmt?: number;
   ponderado: number | null;
   desviacion?: number | null;
   aspectos: AspectoMetric[];
@@ -125,8 +180,8 @@ export interface DocenteAspectosMetrics {
   codigo_materia?: string | null;
   escala_maxima: number;
   evaluacion_estudiantes: AspectoGroupMetrics;
-  autoevaluacion_docente: AspectoGroupMetrics;
-  resultado_final: ResultadoFinalMetrics;
+  autoevaluacion_docente?: AspectoGroupMetrics;
+  resultado_final?: ResultadoFinalMetrics;
   aspectos?: AspectoMetric[];
   promedio?: number | null;
   desviacion?: number | null;
@@ -141,14 +196,15 @@ export interface MateriaGrupoMetric {
   total_evaluaciones: number;
   total_realizadas: number;
   total_pendientes: number;
-  suma: number;
-  promedio_general: number | null;
-  desviacion_general: number | null;
+  suma?: number;
+  promedio_general?: number | null;
+  desviacion_general?: number | null;
   total_evaluaciones_registradas: number;
   total_estudiantes_registrados: number;
-  total_aspectos: number;
+  total_aspectos?: number;
   porcentaje_cumplimiento: number;
   nota_final_ponderada?: number | null;
+  eval?: DocenteEvalMetrics;
 }
 
 export interface MateriaMetric {
@@ -159,14 +215,15 @@ export interface MateriaMetric {
   total_evaluaciones: number;
   total_realizadas: number;
   total_pendientes: number;
-  suma: number;
-  promedio_general: number | null;
-  desviacion_general: number | null;
+  suma?: number;
+  promedio_general?: number | null;
+  desviacion_general?: number | null;
   total_evaluaciones_registradas: number;
   total_estudiantes_registrados: number;
-  total_aspectos: number;
+  total_aspectos?: number;
   porcentaje_cumplimiento: number;
   nota_final_ponderada?: number | null;
+  eval?: DocenteEvalMetrics;
   grupo?: string;
   grupos?: MateriaGrupoMetric[];
 }
@@ -221,9 +278,17 @@ export interface AIAnalysis {
 }
 
 export interface CommentsAnalysisResponse {
+  success?: boolean;
+  message?: string;
   docente: string;
-  total_respuestas: number;
-  analisis: AIAnalysis;
+  total_respuestas?: number;
+  analisis?: AIAnalysis;
+  materias_analizadas?: string[];
+  resultados?: Array<{
+    codigo_materia: string;
+    estado: 'analizado' | 'sin_respuestas' | 'sin_comentarios';
+    analisis?: unknown;
+  }>;
 }
 
 // ========================
@@ -389,7 +454,11 @@ const normalizeEncuestaProgramas = (payload: any): SummaryByPrograms => {
 };
 
 const normalizeDocenteList = (payload: any): DocenteListResponse => {
-  const rawData = Array.isArray(payload?.data) ? payload.data : [];
+  const rawData = Array.isArray(payload?.data)
+    ? payload.data
+    : payload && typeof payload === 'object' && (payload.docente || payload.usuario)
+      ? [payload]
+      : [];
 
   const data: DocenteGeneralMetrics[] = rawData.map((item: any) => {
     const totalEvaluaciones = getNumber(item?.total_evaluaciones ?? item?.total_encuestas, 0);
@@ -419,7 +488,7 @@ const normalizeDocenteList = (payload: any): DocenteListResponse => {
     data,
     pagination: {
       page: getNumber(payload?.pagination?.page, 1),
-      limit: getNumber(payload?.pagination?.limit, data.length || 10),
+      limit: getNumber(payload?.pagination?.limit, data.length || 1),
       total: getNumber(payload?.pagination?.total, data.length),
       pages: getNumber(payload?.pagination?.pages, 1),
     },
@@ -607,7 +676,8 @@ export const metricService = {
       return normalizeDocenteList(response);
     }
 
-    return httpClient.get<DocenteListResponse>(`/metric/evaluations/docentes?${params.toString()}`);
+    const response = await httpClient.get<any>(`/metric/evaluations/docentes?${params.toString()}`);
+    return normalizeDocenteList(response);
   },
 
   /**
@@ -630,10 +700,21 @@ export const metricService = {
         ranking: (docentes.data || []).map((docente) => ({
           docente: docente.docente,
           nombre_docente: docente.nombre_docente || docente.docente,
+          total_evaluaciones: docente.total_evaluaciones,
+          total_realizadas: docente.total_realizadas,
+          total_pendientes: docente.total_pendientes,
+          total_evaluaciones_registradas: docente.total_evaluaciones_registradas ?? docente.total_realizadas,
+          total_estudiantes_registrados: docente.total_estudiantes_registrados ?? docente.total_realizadas,
+          porcentaje_cumplimiento: docente.porcentaje_cumplimiento,
+          score_rank: Number(docente.promedio_general ?? 0),
+          promedio_docente: Number(docente.promedio_general ?? 0),
+          promedio_evaluacion: Number(docente.promedio_general ?? 0),
           avg: Number(docente.promedio_general ?? 0),
           adjusted: Number(docente.promedio_general ?? 0),
           realizados: docente.total_realizadas,
           universo: docente.total_evaluaciones,
+          desviacion_estandar: docente.desviacion_general,
+          eval: docente.eval,
         })),
       };
     }

@@ -21,6 +21,7 @@ interface AspectosEvaluacionModalProps {
   description?: string;
   docente: string;
   cfgT: number;
+  hasAutoevaluacionRelacion?: boolean;
   codigoMateria?: string; // Opcional: si se proporciona, filtra por materia específica
   materiaNombre?: string; // Solo para mostrar en la interfaz
 }
@@ -32,12 +33,20 @@ export function AspectosEvaluacionModal({
   description = 'Análisis detallado de cada aspecto evaluado',
   docente,
   cfgT,
+  hasAutoevaluacionRelacion = false,
   codigoMateria,
   materiaNombre,
 }: AspectosEvaluacionModalProps) {
   const [aspectos, setAspectos] = useState<DocenteAspectosMetrics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const evaluacionEstudiantes = aspectos?.evaluacion_estudiantes;
+  const autoevaluacionDocente = aspectos?.autoevaluacion_docente ?? null;
+  const aspectosEvaluacion = evaluacionEstudiantes?.aspectos ?? aspectos?.aspectos ?? [];
+  const aspectosAutoevaluacion = autoevaluacionDocente?.aspectos ?? [];
+  const autoevaluacionRespondida =
+    hasAutoevaluacionRelacion && (autoevaluacionDocente?.total_respuestas ?? 0) > 0;
 
   // Cargar datos cuando el modal se abre
   useEffect(() => {
@@ -111,7 +120,7 @@ export function AspectosEvaluacionModal({
     );
   }
 
-  if (!aspectos || !aspectos.aspectos || aspectos.aspectos.length === 0) {
+  if (!aspectos || aspectosEvaluacion.length === 0) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
@@ -148,10 +157,47 @@ export function AspectosEvaluacionModal({
         </DialogHeader>
 
         <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-3 rounded-lg border bg-muted/20">
+              <p className="text-xs text-muted-foreground">Evaluación estudiantes</p>
+              <p className="text-sm font-semibold">
+                Peso: {((evaluacionEstudiantes?.peso ?? 1) * 100).toFixed(0)}%
+              </p>
+              <p className="text-sm font-medium">
+                Promedio: {evaluacionEstudiantes?.promedio_general?.toFixed(2) ?? 'N/A'}
+              </p>
+            </div>
+            <div className="p-3 rounded-lg border bg-muted/20">
+              <p className="text-xs text-muted-foreground">Autoevaluación docente</p>
+              <p className="text-sm font-semibold">
+                {hasAutoevaluacionRelacion
+                  ? `Peso: ${((autoevaluacionDocente?.peso ?? 0) * 100).toFixed(0)}%`
+                  : 'No aplica'}
+              </p>
+              <p className="text-sm font-medium">
+                {hasAutoevaluacionRelacion
+                  ? autoevaluacionRespondida
+                    ? `Promedio: ${autoevaluacionDocente?.promedio_general?.toFixed(2) ?? 'N/A'}`
+                    : 'Sin responder'
+                  : 'Sin autoevaluación asociada'}
+              </p>
+            </div>
+            <div className="p-3 rounded-lg border bg-muted/20">
+              <p className="text-xs text-muted-foreground">Nota final ponderada</p>
+              <p className="text-lg font-bold">
+                {aspectos?.resultado_final?.nota_final_ponderada?.toFixed(2) ?? aspectos?.nota_final_encuesta?.toFixed(2) ?? 'N/A'}
+              </p>
+            </div>
+          </div>
+
           {/* Aspectos individuales */}
           <div className="space-y-4">
             <h3 className="font-semibold text-sm">Detalles por Aspecto</h3>
-            {aspectos.aspectos.map((aspecto) => (
+            {aspectosEvaluacion.map((aspecto) => {
+              const denominator = Math.max(aspecto.total_respuestas * 5, 1);
+              const percentage = (aspecto.suma / denominator) * 100;
+
+              return (
               <div key={aspecto.aspecto_id} className="space-y-2 pb-4 border-b last:border-b-0">
                 <div className="flex justify-between items-start gap-4">
                   <div className="flex-1">
@@ -162,17 +208,52 @@ export function AspectosEvaluacionModal({
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-sm">
-                      {((aspecto.suma / (aspecto.total_respuestas * 5)) * 100).toFixed(1)}%
+                      {percentage.toFixed(1)}%
                     </p>
                   </div>
                 </div>
                 <Progress 
-                  value={(aspecto.suma / (aspecto.total_respuestas * 5)) * 100} 
+                  value={percentage} 
                   className="h-2"
                 />
               </div>
-            ))}
+              );
+            })}
           </div>
+
+          {hasAutoevaluacionRelacion && (
+            <div className="space-y-4">
+              <h3 className="font-semibold text-sm">Autoevaluación por Aspecto</h3>
+              {!autoevaluacionRespondida ? (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>Autoevaluación sin responder</AlertDescription>
+                </Alert>
+              ) : (
+                aspectosAutoevaluacion.map((aspecto) => {
+                  const denominator = Math.max(aspecto.total_respuestas * 5, 1);
+                  const percentage = (aspecto.suma / denominator) * 100;
+
+                  return (
+                    <div key={`auto-${aspecto.aspecto_id}`} className="space-y-2 pb-4 border-b last:border-b-0">
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{aspecto.nombre}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Suma: {aspecto.suma.toFixed(2)} • Respuestas: {aspecto.total_respuestas}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-sm">{percentage.toFixed(1)}%</p>
+                        </div>
+                      </div>
+                      <Progress value={percentage} className="h-2" />
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
 
           {/* Resumen estadístico */}
           <div className="pt-4 border-t space-y-4 bg-muted/50 p-4 rounded-lg">
@@ -192,7 +273,7 @@ export function AspectosEvaluacionModal({
               </div>
             </div>
             <div className="text-xs text-muted-foreground">
-              <p>Total de aspectos evaluados: {aspectos.aspectos.length}</p>
+              <p>Total de aspectos evaluados: {aspectosEvaluacion.length}</p>
             </div>
           </div>
         </div>

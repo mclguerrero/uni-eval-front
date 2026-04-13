@@ -36,6 +36,7 @@ interface AspectoMetricsModalProps {
   docente: DocenteGeneralMetrics
   materia: MateriaMetric
   filtros: FiltrosState
+  hasAutoevaluacionRelacion: boolean
   onClose: () => void
 }
 
@@ -43,10 +44,39 @@ export default function AspectoMetricsModal({
   docente,
   materia,
   filtros,
+  hasAutoevaluacionRelacion,
   onClose,
 }: AspectoMetricsModalProps) {
   const [metricsData, setMetricsData] = useState<DocenteAspectosMetrics | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const evaluacionEstudiantes = metricsData?.evaluacion_estudiantes ?? {
+    peso: 0,
+    suma_total: 0,
+    total_respuestas: 0,
+    promedio_general: 0,
+    ponderado: 0,
+    desviacion: null,
+    aspectos: [],
+  }
+
+  const autoevaluacionDocente = metricsData?.autoevaluacion_docente ?? {
+    peso: 0,
+    suma_total: 0,
+    total_respuestas: 0,
+    promedio_general: 0,
+    ponderado: 0,
+    desviacion: null,
+    aspectos: [],
+  }
+
+  const resultadoFinal = metricsData?.resultado_final ?? {
+    nota_final_ponderada: 0,
+  }
+
+  const autoevaluacionRespondida = hasAutoevaluacionRelacion && autoevaluacionDocente.total_respuestas > 0
+  const diferenciaPromedios =
+    (evaluacionEstudiantes.promedio_general || 0) - (autoevaluacionDocente.promedio_general || 0)
 
   useEffect(() => {
     cargarMetricas()
@@ -91,24 +121,30 @@ export default function AspectoMetricsModal({
   const radarData = useMemo(() => {
     if (!metricsData) return [];
 
-    const allAspectNames = Array.from(new Set([
-      ...metricsData.evaluacion_estudiantes.aspectos.map(a => a.nombre).filter(Boolean),
-      ...metricsData.autoevaluacion_docente.aspectos.map(a => a.nombre).filter(Boolean)
-    ]));
+    const allAspectNames = Array.from(
+      new Set([
+        ...evaluacionEstudiantes.aspectos.map((a) => a.nombre).filter(Boolean),
+        ...(hasAutoevaluacionRelacion
+          ? autoevaluacionDocente.aspectos.map((a) => a.nombre).filter(Boolean)
+          : []),
+      ])
+    );
 
     return allAspectNames.map(nombre => {
-      const est = metricsData.evaluacion_estudiantes.aspectos.find(a => a.nombre === nombre);
-      const auto = metricsData.autoevaluacion_docente.aspectos.find(a => a.nombre === nombre);
+      const est = evaluacionEstudiantes.aspectos.find(a => a.nombre === nombre);
+      const auto = hasAutoevaluacionRelacion
+        ? autoevaluacionDocente.aspectos.find(a => a.nombre === nombre)
+        : undefined;
       
       return {
         subject: nombre as string,
         Estudiantes: est?.promedio || 0,
-        Docente: auto?.promedio || 0,
+        Docente: hasAutoevaluacionRelacion ? auto?.promedio || 0 : null,
         estCompleto: est,
         autoCompleto: auto
       };
     });
-  }, [metricsData]);
+  }, [metricsData, evaluacionEstudiantes.aspectos, autoevaluacionDocente.aspectos, hasAutoevaluacionRelacion]);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -208,13 +244,13 @@ export default function AspectoMetricsModal({
                   <div className="flex items-center justify-between mb-4">
                     <p className="text-xs font-medium text-slate-400">Estudiantes</p>
                     <div className="text-right">
-                      <Badge className="bg-blue-50 text-blue-600 border-none font-bold">{(metricsData.evaluacion_estudiantes.peso * 100).toFixed(0)}% Peso</Badge>
-                      <p className="text-xs font-medium text-blue-300 mt-1">Aporte: +{(metricsData.evaluacion_estudiantes.ponderado || 0).toFixed(2)}</p>
+                      <Badge className="bg-blue-50 text-blue-600 border-none font-bold">{(evaluacionEstudiantes.peso * 100).toFixed(0)}% Peso</Badge>
+                      <p className="text-xs font-medium text-blue-300 mt-1">Aporte: +{(evaluacionEstudiantes.ponderado || 0).toFixed(2)}</p>
                     </div>
                   </div>
                   <div className="flex items-baseline gap-2">
-                    <p className={`text-4xl font-black ${getScoreColor(metricsData.evaluacion_estudiantes.promedio_general || 0)}`}>
-                      {(metricsData.evaluacion_estudiantes.promedio_general || 0).toFixed(2)}
+                    <p className={`text-4xl font-black ${getScoreColor(evaluacionEstudiantes.promedio_general || 0)}`}>
+                      {(evaluacionEstudiantes.promedio_general || 0).toFixed(2)}
                     </p>
                     <p className="text-xs font-bold text-slate-400 italic">/5.00</p>
                   </div>
@@ -223,7 +259,7 @@ export default function AspectoMetricsModal({
                       <Users className="w-4 h-4" />
                       <span className="text-xs font-normal">{materia.total_realizadas} Evaluaciones</span>
                     </div>
-                    <span className="text-xs font-normal text-slate-300">{metricsData.evaluacion_estudiantes.total_respuestas} Ítems</span>
+                    <span className="text-xs font-normal text-slate-300">{evaluacionEstudiantes.total_respuestas} Ítems</span>
                   </div>
                 </div>
 
@@ -232,22 +268,36 @@ export default function AspectoMetricsModal({
                   <div className="flex items-center justify-between mb-4">
                     <p className="text-xs font-medium text-slate-400">Docente</p>
                     <div className="text-right">
-                      <Badge className="bg-purple-50 text-purple-600 border-none font-bold">{(metricsData.autoevaluacion_docente.peso * 100).toFixed(0)}% Peso</Badge>
-                      <p className="text-xs font-medium text-purple-300 mt-1">Aporte: +{(metricsData.autoevaluacion_docente.ponderado || 0).toFixed(2)}</p>
+                      <Badge className="bg-purple-50 text-purple-600 border-none font-bold">
+                        {hasAutoevaluacionRelacion ? `${(autoevaluacionDocente.peso * 100).toFixed(0)}% Peso` : 'No aplica'}
+                      </Badge>
+                      <p className="text-xs font-medium text-purple-300 mt-1">
+                        {hasAutoevaluacionRelacion
+                          ? `Aporte: +${(autoevaluacionDocente.ponderado || 0).toFixed(2)}`
+                          : 'Sin autoevaluación asociada'}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-baseline gap-2">
-                    <p className={`text-4xl font-black ${getScoreColor(metricsData.autoevaluacion_docente.promedio_general || 0)}`}>
-                      {(metricsData.autoevaluacion_docente.promedio_general || 0).toFixed(2)}
-                    </p>
+                    {hasAutoevaluacionRelacion && autoevaluacionRespondida ? (
+                      <p className={`text-4xl font-black ${getScoreColor(autoevaluacionDocente.promedio_general || 0)}`}>
+                        {(autoevaluacionDocente.promedio_general || 0).toFixed(2)}
+                      </p>
+                    ) : (
+                      <p className="text-2xl font-black text-slate-400">
+                        {hasAutoevaluacionRelacion ? 'Sin responder' : 'No aplica'}
+                      </p>
+                    )}
                     <p className="text-xs font-bold text-slate-400 italic">/5.00</p>
                   </div>
                   <div className="mt-4 pt-4 border-t border-slate-50 flex items-center justify-between">
                     <div className="flex items-center gap-2 text-slate-500">
                       <UserCheck className="w-4 h-4" />
-                      <span className="text-xs font-normal">1 Autoevaluación</span>
+                      <span className="text-xs font-normal">
+                        {hasAutoevaluacionRelacion ? '1 Autoevaluación' : 'Sin Autoevaluación'}
+                      </span>
                     </div>
-                    <span className="text-xs font-normal text-slate-300">{metricsData.autoevaluacion_docente.total_respuestas} Ítems</span>
+                    <span className="text-xs font-normal text-slate-300">{autoevaluacionDocente.total_respuestas} Ítems</span>
                   </div>
                 </div>
 
@@ -259,16 +309,22 @@ export default function AspectoMetricsModal({
                   <p className="text-xs font-medium text-white/50 mb-4">Puntaje Final</p>
                   <div className="flex items-baseline gap-2">
                     <p className="text-5xl font-black text-white tracking-tighter">
-                      {(metricsData.resultado_final.nota_final_ponderada || 0).toFixed(2)}
+                      {(resultadoFinal.nota_final_ponderada || 0).toFixed(2)}
                     </p>
                     <p className="text-xs font-bold text-white/40 mb-1">PONDERADO</p>
                   </div>
                   <div className="mt-4 pt-4 border-t border-white/10">
                     <div className="flex justify-between items-center">
                       <span className="text-xs font-bold text-white/60">Diferencia:</span>
-                      <span className={`text-sm font-black p-1 rounded-lg bg-white/5 ${getDiferenciaColor((metricsData.evaluacion_estudiantes.promedio_general || 0) - (metricsData.autoevaluacion_docente.promedio_general || 0))}`}>
-                        {((metricsData.evaluacion_estudiantes.promedio_general || 0) - (metricsData.autoevaluacion_docente.promedio_general || 0)).toFixed(2)}
-                      </span>
+                      {hasAutoevaluacionRelacion && autoevaluacionRespondida ? (
+                        <span className={`text-sm font-black p-1 rounded-lg bg-white/5 ${getDiferenciaColor(diferenciaPromedios)}`}>
+                          {diferenciaPromedios.toFixed(2)}
+                        </span>
+                      ) : (
+                        <span className="text-sm font-black p-1 rounded-lg bg-white/5 text-white/60">
+                          N/A
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -306,15 +362,17 @@ export default function AspectoMetricsModal({
                           strokeWidth={3}
                           connectNulls
                         />
-                        <Radar
-                          name="Docente"
-                          dataKey="Docente"
-                          stroke="#8b5cf6"
-                          fill="#8b5cf6"
-                          fillOpacity={0.15}
-                          strokeWidth={3}
-                          connectNulls
-                        />
+                        {hasAutoevaluacionRelacion && (
+                          <Radar
+                            name="Docente"
+                            dataKey="Docente"
+                            stroke="#8b5cf6"
+                            fill="#8b5cf6"
+                            fillOpacity={0.15}
+                            strokeWidth={3}
+                            connectNulls
+                          />
+                        )}
                         <RechartsTooltip content={<CustomTooltip />} />
                         <Legend wrapperStyle={{ paddingTop: '30px' }} iconType="circle" />
                       </RadarChart>
@@ -326,25 +384,35 @@ export default function AspectoMetricsModal({
                 <div className="space-y-4 max-h-[580px] overflow-y-auto pr-2 custom-scrollbar">
                   <div className="flex items-center justify-between px-2 mb-2">
                     <h3 className="text-sm font-semibold text-slate-400">Comparativa por Ítem</h3>
-                    <div className="flex gap-4 text-[10px] font-bold text-slate-400 tracking-tighter">
-                      <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500"></div> EST.</span>
-                      <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-purple-500"></div> AUTO.</span>
-                    </div>
+                    {hasAutoevaluacionRelacion ? (
+                      <div className="flex gap-4 text-[10px] font-bold text-slate-400 tracking-tighter">
+                        <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500"></div> EST.</span>
+                        <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-purple-500"></div> AUTO.</span>
+                      </div>
+                    ) : (
+                      <div className="text-[10px] font-bold text-slate-400 tracking-tighter">Solo evaluación</div>
+                    )}
                   </div>
                   {radarData.map((item: typeof radarData[number], idx: number) => {
-                    const diff = item.Estudiantes - item.Docente;
+                    const diff = hasAutoevaluacionRelacion && typeof item.Docente === 'number'
+                      ? item.Estudiantes - item.Docente
+                      : 0;
                     return (
                       <div key={idx} className="group p-5 rounded-3xl bg-white border border-slate-100 hover:border-blue-100 transition-all hover:shadow-md">
                         <div className="flex justify-between items-start gap-4 mb-4">
                           <p className="text-sm font-bold text-slate-700 leading-tight group-hover:text-blue-600 transition-colors">
                             {item.subject}
                           </p>
-                          <Badge className={`border-none font-black text-[10px] ${getDiferenciaColor(diff)}`}>
-                            {diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)}
-                          </Badge>
+                          {hasAutoevaluacionRelacion ? (
+                            <Badge className={`border-none font-black text-[10px] ${getDiferenciaColor(diff)}`}>
+                              {diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)}
+                            </Badge>
+                          ) : (
+                            <Badge className="border-none font-black text-[10px] text-slate-500">N/A</Badge>
+                          )}
                         </div>
                         
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className={`grid gap-4 ${hasAutoevaluacionRelacion ? 'grid-cols-2' : 'grid-cols-1'}`}>
                           <div className="space-y-1.5">
                             <div className="flex justify-between text-[10px] font-black text-blue-400">
                               <span>ESTUDIANTES</span>
@@ -357,18 +425,24 @@ export default function AspectoMetricsModal({
                               />
                             </div>
                           </div>
-                          <div className="space-y-1.5">
-                            <div className="flex justify-between text-[10px] font-black text-purple-400">
-                              <span>AUTOCALIFICACIÓN</span>
-                              <span>{item.Docente.toFixed(2)}</span>
+                          {hasAutoevaluacionRelacion && (
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between text-[10px] font-black text-purple-400">
+                                <span>AUTOCALIFICACIÓN</span>
+                                <span>
+                                  {typeof item.Docente === 'number'
+                                    ? item.Docente.toFixed(2)
+                                    : 'Sin responder'}
+                                </span>
+                              </div>
+                              <div className="h-1.5 w-full bg-purple-50 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-purple-500 rounded-full transition-all duration-1000" 
+                                  style={{ width: `${((typeof item.Docente === 'number' ? item.Docente : 0) / 5) * 100}%` }}
+                                />
+                              </div>
                             </div>
-                            <div className="h-1.5 w-full bg-purple-50 rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-purple-500 rounded-full transition-all duration-1000" 
-                                style={{ width: `${(item.Docente / 5) * 100}%` }}
-                              />
-                            </div>
-                          </div>
+                          )}
                         </div>
                       </div>
                     );

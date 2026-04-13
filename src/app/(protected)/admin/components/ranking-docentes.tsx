@@ -33,16 +33,19 @@ export default function RankingDocentes({ docentes, loading, filtros }: RankingD
 
   const handleDocenteClick = (docente: RankingItem) => {
     // Transformar RankingItem a DocenteGeneralMetrics
+    const totalEvaluaciones = docente.total_evaluaciones ?? docente.universo ?? 0;
+    const totalRealizadas = docente.total_realizadas ?? docente.realizados ?? 0;
     const docenteMetrics: DocenteGeneralMetrics = {
       docente: docente.docente,
       nombre_docente: docente.nombre_docente,
-      promedio_general: docente.avg || null,
-      desviacion_general: null,
-      total_evaluaciones: docente.universo || 0,
-      total_realizadas: docente.realizados || 0,
-      total_pendientes: (docente.universo || 0) - (docente.realizados || 0),
+      promedio_general: docente.promedio_docente ?? docente.avg ?? null,
+      desviacion_general: docente.desviacion_estandar,
+      total_evaluaciones: totalEvaluaciones,
+      total_realizadas: totalRealizadas,
+      total_pendientes: docente.total_pendientes ?? (totalEvaluaciones - totalRealizadas),
       total_aspectos: 0,
-      porcentaje_cumplimiento: docente.universo > 0 ? (docente.realizados / docente.universo) * 100 : 0,
+      porcentaje_cumplimiento:
+        docente.porcentaje_cumplimiento ?? (totalEvaluaciones > 0 ? (totalRealizadas / totalEvaluaciones) * 100 : 0),
       suma: 0,
     };
     setSelectedDocente(docenteMetrics);
@@ -166,8 +169,10 @@ export default function RankingDocentes({ docentes, loading, filtros }: RankingD
                   <tbody className="divide-y divide-slate-100">
                     {docentesOrdenados.map((docente, index) => {
                       const score = docente.adjusted || 0;
+                      const totalEvaluaciones = docente.total_evaluaciones ?? docente.universo ?? 0;
+                      const totalRealizadas = docente.total_realizadas ?? docente.realizados ?? 0;
                       const participationPercent = Math.round(
-                        ((docente.realizados || 0) / (docente.universo || 1)) * 100
+                        (docente.porcentaje_cumplimiento ?? (totalEvaluaciones > 0 ? (totalRealizadas / totalEvaluaciones) * 100 : 0))
                       );
                       const isTop1 = index === 0;
 
@@ -214,7 +219,7 @@ export default function RankingDocentes({ docentes, loading, filtros }: RankingD
                           <td className="px-6 py-4 text-right">
                             <div className="space-y-1">
                               <p className="font-medium text-gray-900 text-base">
-                                {docente.realizados}/{docente.universo}
+                                {totalRealizadas}/{totalEvaluaciones}
                               </p>
                               <p className="text-sm text-gray-500">
                                 {participationPercent}%
@@ -264,8 +269,10 @@ export default function RankingDocentes({ docentes, loading, filtros }: RankingD
                 <div className="divide-y divide-slate-100">
                   {top3Mejores.map((docente, index) => {
                     const score = docente.adjusted || 0;
+                    const totalEvaluaciones = docente.total_evaluaciones ?? docente.universo ?? 0;
+                    const totalRealizadas = docente.total_realizadas ?? docente.realizados ?? 0;
                     const participationPercent = Math.round(
-                      ((docente.realizados || 0) / (docente.universo || 1)) * 100
+                      (docente.porcentaje_cumplimiento ?? (totalEvaluaciones > 0 ? (totalRealizadas / totalEvaluaciones) * 100 : 0))
                     );
 
                     return (
@@ -280,7 +287,7 @@ export default function RankingDocentes({ docentes, loading, filtros }: RankingD
                                 {docente.nombre_docente}
                               </button>
                               <p className="text-sm text-gray-500 mt-0.5">
-                                {docente.realizados}/{docente.universo} evals
+                                {totalRealizadas}/{totalEvaluaciones} evals
                               </p>
                             </div>
                             <span className="font-semibold text-gray-900 text-base whitespace-nowrap">
@@ -325,8 +332,10 @@ export default function RankingDocentes({ docentes, loading, filtros }: RankingD
                 <div className="divide-y divide-slate-100">
                   {top3Peores.map((docente, index) => {
                     const score = docente.adjusted || 0;
+                    const totalEvaluaciones = docente.total_evaluaciones ?? docente.universo ?? 0;
+                    const totalRealizadas = docente.total_realizadas ?? docente.realizados ?? 0;
                     const participationPercent = Math.round(
-                      ((docente.realizados || 0) / (docente.universo || 1)) * 100
+                      (docente.porcentaje_cumplimiento ?? (totalEvaluaciones > 0 ? (totalRealizadas / totalEvaluaciones) * 100 : 0))
                     );
 
                     return (
@@ -341,7 +350,7 @@ export default function RankingDocentes({ docentes, loading, filtros }: RankingD
                                 {docente.nombre_docente}
                               </button>
                               <p className="text-sm text-gray-500 mt-0.5">
-                                {docente.realizados}/{docente.universo} evals
+                                {totalRealizadas}/{totalEvaluaciones} evals
                               </p>
                             </div>
                             <span className="font-semibold text-gray-900 text-base whitespace-nowrap">

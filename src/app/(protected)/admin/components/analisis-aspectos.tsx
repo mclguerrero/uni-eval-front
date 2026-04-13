@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton"
+import { configuracionEvaluacionService } from "@/src/api/services/app/cfg-t.service";
 import { 
   DocenteAspectosMetrics,
   metricService,
@@ -40,21 +41,8 @@ const normalizeAspectosResponse = (response: any): DocenteAspectosMetrics | null
   const evaluacion = payload.evaluacion_estudiantes || payload.evaluacionEstudiantes;
   if (!evaluacion) return null;
 
-  const autoevaluacion = payload.autoevaluacion_docente || payload.autoevaluacionDocente || {
-    peso: 0,
-    suma_total: 0,
-    total_respuestas: 0,
-    promedio_general: 0,
-    ponderado: 0,
-    aspectos: []
-  };
-
-  const resultado = payload.resultado_final || payload.resultadoFinal || {
-    nota_final_ponderada:
-      toNumberOrNull(evaluacion?.ponderado) ??
-      toNumberOrNull(evaluacion?.promedio_general) ??
-      null
-  };
+  const autoevaluacion = payload.autoevaluacion_docente || payload.autoevaluacionDocente || null;
+  const resultado = payload.resultado_final || payload.resultadoFinal || null;
 
   return {
     ...payload,
@@ -71,6 +59,7 @@ export default function AnalisisAspectos({
 }: AnalisisAspectosProps) {
   const [aspectosAgregados, setAspectosAgregados] = useState<DocenteAspectosMetrics | null>(null);
   const [aspectosAgregadosLoading, setAspectosAgregadosLoading] = useState(false);
+  const [hasAutoevaluacionRelacion, setHasAutoevaluacionRelacion] = useState(false);
   const [visibleSeries, setVisibleSeries] = useState({
     est: true,
     auto: true
@@ -123,6 +112,32 @@ export default function AnalisisAspectos({
     }
   }, [filters, mostrar]);
 
+  useEffect(() => {
+    let mounted = true;
+
+    const loadCfgRelacion = async () => {
+      if (!filters?.cfg_t) {
+        if (mounted) setHasAutoevaluacionRelacion(false);
+        return;
+      }
+
+      try {
+        const cfgResponse = await configuracionEvaluacionService.getById(filters.cfg_t);
+        if (!mounted) return;
+        setHasAutoevaluacionRelacion(Boolean(cfgResponse?.data?.cfg_t_rel));
+      } catch {
+        if (!mounted) return;
+        setHasAutoevaluacionRelacion(false);
+      }
+    };
+
+    loadCfgRelacion();
+
+    return () => {
+      mounted = false;
+    };
+  }, [filters?.cfg_t]);
+
   if (!mostrar) {
     return null;
   }
@@ -156,28 +171,25 @@ export default function AnalisisAspectos({
   }
 
   const evaluacionEstudiantes = aspectosAgregados?.evaluacion_estudiantes;
-  const autoevaluacionDocente = aspectosAgregados?.autoevaluacion_docente;
+  const autoevaluacionDocente = aspectosAgregados?.autoevaluacion_docente ?? null;
   const resultadoFinal = aspectosAgregados?.resultado_final;
   const escalaMaxima = aspectosAgregados?.escala_maxima ?? 5;
   const pesoEstudiantes = toNumberOrNull(evaluacionEstudiantes?.peso) ?? 1;
   const pesoDocente = toNumberOrNull(autoevaluacionDocente?.peso) ?? 0;
-  const autoevaluacionesRealizadas = (autoevaluacionDocente?.total_respuestas ?? 0) > 0 ? 1 : 0;
-  const isEncuestaMode = Boolean(
-    aspectosAgregados?.nota_final_encuesta !== undefined ||
-    pesoDocente === 0 ||
-    ((autoevaluacionDocente?.total_respuestas ?? 0) === 0 &&
-      (autoevaluacionDocente?.aspectos?.length ?? 0) === 0)
-  );
+  const autoevaluacionesRealizadas = hasAutoevaluacionRelacion && (autoevaluacionDocente?.total_respuestas ?? 0) > 0 ? 1 : 0;
+  const autoevaluacionRespondida = hasAutoevaluacionRelacion && (autoevaluacionDocente?.total_respuestas ?? 0) > 0;
 
   // Preparar datos unificados para comparación
   const uniqueNames = Array.from(new Set([
     ...(evaluacionEstudiantes?.aspectos?.map(a => a.nombre) || []),
-    ...(autoevaluacionDocente?.aspectos?.map(a => a.nombre) || [])
+    ...(hasAutoevaluacionRelacion ? (autoevaluacionDocente?.aspectos?.map(a => a.nombre) || []) : [])
   ])).filter(Boolean) as string[];
 
   const combinedData = uniqueNames.map(name => {
     const est = evaluacionEstudiantes?.aspectos?.find(a => a.nombre === name);
-    const auto = autoevaluacionDocente?.aspectos?.find(a => a.nombre === name);
+    const auto = hasAutoevaluacionRelacion
+      ? autoevaluacionDocente?.aspectos?.find(a => a.nombre === name)
+      : undefined;
 
     const estPromedio = toNumberOrNull(est?.promedio) ?? (est && est.total_respuestas > 0 ? est.suma / est.total_respuestas : null);
     const autoPromedio = toNumberOrNull(auto?.promedio) ?? (auto && auto.total_respuestas > 0 ? auto.suma / auto.total_respuestas : null);
@@ -185,7 +197,7 @@ export default function AnalisisAspectos({
     return {
       name,
       est: estPromedio !== null ? Number(estPromedio.toFixed(2)) : null,
-      auto: autoPromedio !== null ? Number(autoPromedio.toFixed(2)) : null,
+      auto: hasAutoevaluacionRelacion && autoPromedio !== null ? Number(autoPromedio.toFixed(2)) : null,
       estTotal: est?.total_respuestas || 0,
       autoTotal: auto?.total_respuestas || 0,
     };
@@ -236,6 +248,8 @@ export default function AnalisisAspectos({
     return null;
   };
 
+    const isSingleEvaluationMode = !hasAutoevaluacionRelacion;
+
   const calcularDiferencia = (evaluacion: number, autoevaluacion: number) => {
     return evaluacion - autoevaluacion;
   };
@@ -254,8 +268,8 @@ export default function AnalisisAspectos({
                 Análisis de Aspectos Evaluados
               </CardTitle>
               <CardDescription className="text-slate-500 text-sm font-normal mt-0.5">
-                {isEncuestaMode
-                  ? 'Resultados agregados de encuesta por aspecto'
+                {isSingleEvaluationMode
+                  ? 'Resultados agregados de evaluación por aspecto'
                   : 'Comparación entre evaluación de estudiantes y autoevaluación docente'}
               </CardDescription>
             </div>
@@ -264,14 +278,14 @@ export default function AnalisisAspectos({
       </CardHeader>
 
       <CardContent className="p-6">
-        {aspectosAgregados && evaluacionEstudiantes && autoevaluacionDocente && combinedData.length > 0 ? (
+        {aspectosAgregados && evaluacionEstudiantes && combinedData.length > 0 ? (
           <div className="space-y-6">
             {/* KPI Metrics - Resumen ejecutivo minimalista */}
-            <div className={`grid gap-4 ${isEncuestaMode ? 'grid-cols-2' : 'grid-cols-3'}`}>
+            <div className={`grid gap-4 ${isSingleEvaluationMode ? 'grid-cols-2' : 'grid-cols-3'}`}>
               {/* Evaluación Estudiantes */}
               <div className="p-4 rounded-lg bg-white border border-slate-200 hover:border-slate-300 transition-colors">
                 <p className="text-sm font-medium text-slate-500 mb-2">
-                  {isEncuestaMode ? 'Encuesta' : 'Estudiantes'}
+                  {isSingleEvaluationMode ? 'Evaluación' : 'Estudiantes'}
                 </p>
                 <div className="flex items-baseline gap-1 mb-3">
                   <span className={`text-4xl font-semibold ${getPromedioColor(toNumberOrNull(evaluacionEstudiantes.promedio_general) ?? 0)}`}>
@@ -281,27 +295,31 @@ export default function AnalisisAspectos({
                 </div>
                 <div className="space-y-1 text-sm text-slate-600">
                   <p><span className="font-medium text-slate-700">Respuestas:</span> {evaluacionEstudiantes.total_respuestas}</p>
-                  <p><span className="font-medium text-slate-700">Peso:</span> {isEncuestaMode ? '100%' : `${(pesoEstudiantes * 100).toFixed(0)}%`}</p>
+                  <p><span className="font-medium text-slate-700">Peso:</span> {isSingleEvaluationMode ? '100%' : `${(pesoEstudiantes * 100).toFixed(0)}%`}</p>
                   <p><span className="font-medium text-slate-700">Ponderado:</span> {(toNumberOrNull(evaluacionEstudiantes.ponderado) ?? 0).toFixed(2)}</p>
                 </div>
               </div>
 
               {/* Autoevaluación Docente */}
-              {!isEncuestaMode && (
+              {!isSingleEvaluationMode && (
                 <div className="p-4 rounded-lg bg-white border border-slate-200 hover:border-slate-300 transition-colors">
                   <p className="text-sm font-medium text-slate-500 mb-2">
                     Docente
                   </p>
                   <div className="flex items-baseline gap-1 mb-3">
-                    <span className={`text-4xl font-semibold ${getPromedioColor(toNumberOrNull(autoevaluacionDocente.promedio_general) ?? 0)}`}>
-                      {(toNumberOrNull(autoevaluacionDocente.promedio_general) ?? 0).toFixed(2)}
-                    </span>
+                    {autoevaluacionRespondida ? (
+                      <span className={`text-4xl font-semibold ${getPromedioColor(toNumberOrNull(autoevaluacionDocente?.promedio_general) ?? 0)}`}>
+                        {(toNumberOrNull(autoevaluacionDocente?.promedio_general) ?? 0).toFixed(2)}
+                      </span>
+                    ) : (
+                      <span className="text-2xl font-semibold text-slate-400">Sin responder</span>
+                    )}
                     <span className="text-slate-400 text-base">/{escalaMaxima.toFixed(1)}</span>
                   </div>
                   <div className="space-y-1 text-sm text-slate-600">
                     <p><span className="font-medium text-slate-700">Respuestas:</span> {autoevaluacionesRealizadas}</p>
                     <p><span className="font-medium text-slate-700">Peso:</span> {(pesoDocente * 100).toFixed(0)}%</p>
-                    <p><span className="font-medium text-slate-700">Ponderado:</span> {(toNumberOrNull(autoevaluacionDocente.ponderado) ?? 0).toFixed(2)}</p>
+                    <p><span className="font-medium text-slate-700">Ponderado:</span> {autoevaluacionRespondida ? (toNumberOrNull(autoevaluacionDocente?.ponderado) ?? 0).toFixed(2) : 'Sin responder'}</p>
                   </div>
                 </div>
               )}
@@ -309,27 +327,31 @@ export default function AnalisisAspectos({
               {/* Resultado Final */}
               <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-slate-300 transition-colors">
                 <p className="text-sm font-medium text-slate-500 mb-2">
-                  {isEncuestaMode ? 'Nota Final Encuesta' : 'Nota Final'}
+                  {isSingleEvaluationMode ? 'Nota Final' : 'Nota Final'}
                 </p>
                 <div className="flex items-baseline gap-1 mb-3">
                   <span className={`text-4xl font-semibold ${getPromedioColor(toNumberOrNull(resultadoFinal?.nota_final_ponderada) ?? 0)}`}>
-                    {(toNumberOrNull(resultadoFinal?.nota_final_ponderada) ?? 0).toFixed(2)}
+                    {toNumberOrNull(resultadoFinal?.nota_final_ponderada)?.toFixed(2) ?? 'N/A'}
                   </span>
                   <span className="text-slate-400 text-base">/{escalaMaxima.toFixed(1)}</span>
                 </div>
                 <div className="text-sm">
                   <p className="text-slate-600">
-                    <span className="font-medium text-slate-700">{isEncuestaMode ? 'Nota final encuesta:' : 'Nota final ponderada:'}</span>{" "}
+                    <span className="font-medium text-slate-700">Nota final ponderada:</span>{" "}
                     <span className="font-semibold text-slate-900">
-                      {(toNumberOrNull(resultadoFinal?.nota_final_ponderada) ?? 0).toFixed(2)}
+                      {toNumberOrNull(resultadoFinal?.nota_final_ponderada)?.toFixed(2) ?? 'N/A'}
                     </span>
                   </p>
-                  {!isEncuestaMode && (
+                  {!isSingleEvaluationMode && (
                     <p className="text-slate-600 mt-1">
                       <span className="font-medium text-slate-700">Diferencia:</span>{" "}
-                      <span className={getDiferenciaBadgeClass(calcularDiferencia(toNumberOrNull(evaluacionEstudiantes.promedio_general) ?? 0, toNumberOrNull(autoevaluacionDocente.promedio_general) ?? 0))}>
-                        {calcularDiferencia(toNumberOrNull(evaluacionEstudiantes.promedio_general) ?? 0, toNumberOrNull(autoevaluacionDocente.promedio_general) ?? 0).toFixed(2)}
-                      </span>
+                      {autoevaluacionRespondida ? (
+                        <span className={getDiferenciaBadgeClass(calcularDiferencia(toNumberOrNull(evaluacionEstudiantes.promedio_general) ?? 0, toNumberOrNull(autoevaluacionDocente?.promedio_general) ?? 0))}>
+                          {calcularDiferencia(toNumberOrNull(evaluacionEstudiantes.promedio_general) ?? 0, toNumberOrNull(autoevaluacionDocente?.promedio_general) ?? 0).toFixed(2)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-500">Sin responder</span>
+                      )}
                     </p>
                   )}
                 </div>
@@ -343,7 +365,7 @@ export default function AnalisisAspectos({
                 <div className="p-6 rounded-lg bg-white border border-slate-200 h-full">
                   <div className="mb-4">
                     <h3 className="text-lg font-semibold text-slate-900">Balance de Competencias</h3>
-                    <p className="text-sm text-slate-500 mt-0.5">{isEncuestaMode ? 'Comportamiento de encuesta por aspecto' : 'Comparación visual por aspecto evaluado'}</p>
+                    <p className="text-sm text-slate-500 mt-0.5">{isSingleEvaluationMode ? 'Comportamiento de evaluación por aspecto' : 'Comparación visual por aspecto evaluado'}</p>
                   </div>
                   <div className="h-[450px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -371,7 +393,7 @@ export default function AnalisisAspectos({
                           axisLine={{ stroke: '#e2e8f0', strokeWidth: 0.5 }}
                         />
                         <Radar
-                          name={isEncuestaMode ? 'Encuesta' : 'Estudiantes'}
+                          name={isSingleEvaluationMode ? 'Evaluación' : 'Estudiantes'}
                           dataKey="Estudiantes"
                           stroke="#4f46e5"
                           fill="#4f46e5"
@@ -382,7 +404,7 @@ export default function AnalisisAspectos({
                           connectNulls
                           hide={!visibleSeries.est}
                         />
-                        {!isEncuestaMode && (
+                        {!isSingleEvaluationMode && (
                           <Radar
                             name="Docente"
                             dataKey="Docente"
@@ -403,7 +425,7 @@ export default function AnalisisAspectos({
                           wrapperStyle={{ cursor: 'pointer', paddingRight: '10px' }}
                           iconType="circle"
                           onClick={(e) => {
-                            if (isEncuestaMode) {
+                            if (isSingleEvaluationMode) {
                               setVisibleSeries(prev => ({ ...prev, est: !prev.est }));
                               return;
                             }
@@ -432,32 +454,38 @@ export default function AnalisisAspectos({
                           
                           <div className="grid grid-cols-2 gap-2 mb-2">
                             {/* Estudiantes */}
-                            <div className={`bg-slate-50 rounded px-2 py-1.5 ${isEncuestaMode ? 'col-span-2' : ''}`}>
-                              <p className="text-xs text-slate-500 font-medium mb-0.5">{isEncuestaMode ? 'Encuesta' : 'Estud.'}</p>
+                            <div className={`bg-slate-50 rounded px-2 py-1.5 ${isSingleEvaluationMode ? 'col-span-2' : ''}`}>
+                              <p className="text-xs text-slate-500 font-medium mb-0.5">{isSingleEvaluationMode ? 'Evaluación' : 'Estud.'}</p>
                               <p className="text-base font-semibold text-indigo-600">
                                 {item.est !== null ? item.est.toFixed(2) : "—"}
                               </p>
                             </div>
 
                             {/* Docente */}
-                            {!isEncuestaMode && (
+                            {!isSingleEvaluationMode && (
                               <div className="bg-slate-50 rounded px-2 py-1.5">
                                 <p className="text-xs text-slate-500 font-medium mb-0.5">Doc.</p>
                                 <p className="text-base font-semibold text-slate-700">
-                                  {item.auto !== null ? item.auto.toFixed(2) : "—"}
+                                  {autoevaluacionRespondida && item.auto !== null ? item.auto.toFixed(2) : "Sin responder"}
                                 </p>
                               </div>
                             )}
                           </div>
 
                           {/* Diferencia */}
-                          {!isEncuestaMode && diff !== null && (
-                            <Badge 
-                              variant="outline" 
-                              className={`w-full justify-center text-xs py-0.5 border ${getDiferenciaBadgeClass(diff)}`}
-                            >
-                              Dif: {diff > 0 ? '+' : ''}{diff.toFixed(2)}
-                            </Badge>
+                          {!isSingleEvaluationMode && (
+                            autoevaluacionRespondida && diff !== null ? (
+                              <Badge 
+                                variant="outline" 
+                                className={`w-full justify-center text-xs py-0.5 border ${getDiferenciaBadgeClass(diff)}`}
+                              >
+                                Dif: {diff > 0 ? '+' : ''}{diff.toFixed(2)}
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="w-full justify-center text-xs py-0.5 border text-slate-500">
+                                Dif: Sin responder
+                              </Badge>
+                            )
                           )}
                         </div>
                       );
