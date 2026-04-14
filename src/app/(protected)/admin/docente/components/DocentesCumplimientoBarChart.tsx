@@ -85,6 +85,7 @@ export default function DocentesCumplimientoBarChart({
         setLoading(true)
         const firstResponse = await metricService.getDocentes({
           cfg_t: filters.cfg_t,
+          include_eval: false,
           sede: filters.sede,
           periodo: filters.periodo,
           programa: filters.programa,
@@ -102,6 +103,7 @@ export default function DocentesCumplimientoBarChart({
           const pageRequests = Array.from({ length: totalPages - 1 }, (_, index) =>
             metricService.getDocentes({
               cfg_t: filters.cfg_t,
+              include_eval: false,
               sede: filters.sede,
               periodo: filters.periodo,
               programa: filters.programa,

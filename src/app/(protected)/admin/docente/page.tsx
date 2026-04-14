@@ -68,6 +68,7 @@ export default function DocenteAdminPage() {
         search: searchTerm || undefined,
         sortBy,
         sortOrder,
+        include_eval: false,
         sede: filtros.sedeSeleccionada || undefined,
         periodo: filtros.periodoSeleccionado || undefined,
         programa: filtros.programaSeleccionado || undefined,

@@ -315,6 +315,7 @@ const buildMetricParams = (
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
     usuario?: string;
+    include_eval?: boolean;
   }
 ): URLSearchParams => {
   const params = new URLSearchParams();
@@ -333,6 +334,7 @@ const buildMetricParams = (
   if (filters.grupo) params.append('grupo', filters.grupo);
   if (filters.page) params.append('page', filters.page.toString());
   if (filters.limit) params.append('limit', filters.limit.toString());
+  if (typeof filters.include_eval === 'boolean') params.append('include_eval', String(filters.include_eval));
 
   return params;
 };
@@ -637,6 +639,7 @@ export const metricService = {
       search?: string;
       sortBy?: string;
       sortOrder?: 'asc' | 'desc';
+      include_eval?: boolean;
     }
   ): Promise<DocenteListResponse> => {
     const params = buildMetricParams(filters);
