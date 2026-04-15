@@ -233,7 +233,7 @@ export default function AnalisisAspectos({
             );
           })}
           <div className="mt-1.5 pt-1.5 border-t border-slate-100 text-[11px] text-slate-500 space-y-0.5">
-            {isEncuestaMode ? (
+            {isSingleEvaluationMode ? (
               <p>Encuesta (peso): 100%</p>
             ) : (
               <>
