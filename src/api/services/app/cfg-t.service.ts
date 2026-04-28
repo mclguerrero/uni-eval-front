@@ -13,7 +13,13 @@ import type { ApiResponse } from '../../types/api.types';
 
 export interface ConfiguracionTipo {
   id: number;
-  tipo_evaluacion_id: number;
+  tipo_id: number;
+  tipo_form_id?: number;
+  tipo_form?: {
+    id: number;
+    nombre: string;
+    descripcion?: string | null;
+  } | null;
   fecha_inicio: string;
   fecha_fin: string;
   es_cmt_gen: boolean;
@@ -25,11 +31,34 @@ export interface ConfiguracionTipo {
     rol_mix_id: number;
     rol_origen_id: number;
     origen: string;
+    nombre?: string;
   }>;
+  scopes?: CfgTScopeItem[];
+  cfg_t_rel?: {
+    id: number;
+    cfg_eval_id: number;
+    cfg_autoeval_id: number;
+    pareja_cfg_t_id: number;
+    rol_en_rel: "EVAL" | "AUTOEVAL";
+  } | null;
+  tipo_evaluacion: {
+    id: number;
+    categoria: {
+      id: number;
+      nombre: string;
+      descripcion: string;
+    };
+    tipo: {
+      id: number;
+      nombre: string;
+      descripcion: string;
+    };
+  };
 }
 
 export interface CreateConfiguracionTipoInput {
-  tipo_evaluacion_id: number;
+  tipo_id: number;
+  tipo_form_id: number;
   fecha_inicio: string;
   fecha_fin: string;
   es_cmt_gen?: boolean;
@@ -37,8 +66,55 @@ export interface CreateConfiguracionTipoInput {
   es_activo?: boolean;
 }
 
+export interface CreateCfgTScopeInput {
+  sede_id?: number | null;
+  periodo_id: number;
+  programa_id?: number | null;
+  semestre_id?: number | null;
+  grupo_id?: number | null;
+}
+
+export interface CfgTScopeItem {
+  id: number;
+  cfg_t_id: number;
+  sede_id?: number | null;
+  sede_nombre?: string | null;
+  periodo_id: number;
+  periodo_nombre?: string | null;
+  programa_id?: number | null;
+  programa_nombre?: string | null;
+  semestre_id?: number | null;
+  semestre_nombre?: string | null;
+  grupo_id?: number | null;
+  grupo_nombre?: string | null;
+}
+
+export interface CreateCfgTRoleInput {
+  rol_mix_id: number;
+}
+
+export interface CreateCfgTFullInput extends CreateConfiguracionTipoInput {
+  genera_autoeval?: boolean;
+  autoeval_tipo_form_id?: number | null;
+  autoeval_rol_mix_ids?: number[] | null;
+  scopes: CreateCfgTScopeInput[];
+  roles: CreateCfgTRoleInput[];
+}
+
+export interface CreateCfgTFullResponse {
+  cfg_eval: {
+    id: number;
+  } & Record<string, any>;
+  cfg_autoeval: ({
+    id: number;
+  } & Record<string, any>) | null;
+  relation: Record<string, any> | null;
+  scope_count: number;
+}
+
 export interface UpdateConfiguracionTipoInput {
-  tipo_evaluacion_id?: number;
+  tipo_id?: number;
+  tipo_form_id?: number;
   fecha_inicio?: string;
   fecha_fin?: string;
   es_cmt_gen?: boolean;
@@ -60,6 +136,23 @@ export interface AspectoEscalaOpcion {
 }
 
 /**
+ * Tipo de evaluación con categoría y tipo
+ */
+export interface TipoEvaluacionData {
+  id: number;
+  categoria: {
+    id: number;
+    nombre: string;
+    descripcion: string;
+  };
+  tipo: {
+    id: number;
+    nombre: string;
+    descripcion: string;
+  };
+}
+
+/**
  * Aspecto con sus escalas/opciones configuradas
  */
 export interface AspectoConEscalas {
@@ -78,6 +171,16 @@ export interface AspectoConEscalas {
  * Respuesta del endpoint /cfg/t/{id}/a-e
  */
 export interface ConfiguracionAspectosEscalasResponse {
+  es_evaluacion: boolean;
+  es_cmt_gen: boolean;
+  es_cmt_gen_oblig: boolean;
+  tipo_form_id?: number;
+  tipo_form?: {
+    id: number;
+    nombre: string;
+    descripcion?: string | null;
+  } | null;
+  tipo_evaluacion: TipoEvaluacionData;
   aspectos: AspectoConEscalas[];
 }
 
@@ -85,7 +188,7 @@ export interface CfgAItem {
   id: number;
   cfg_t_id: number;
   aspecto_id: number;
-  orden: string;
+  orden: number;
   es_activo: boolean;
   aspecto: {
     id: number;
@@ -98,8 +201,8 @@ export interface CfgEItem {
   id: number;
   cfg_t_id: number;
   escala_id: number;
-  puntaje: string;
-  orden: string;
+  puntaje: number;
+  orden: number;
   es_activo: boolean;
   escala: {
     id: number;
@@ -110,8 +213,26 @@ export interface CfgEItem {
 }
 
 export interface ConfiguracionCfgACfgEResponse {
+  es_evaluacion: boolean;
+  es_cmt_gen: boolean;
+  es_cmt_gen_oblig: boolean;
+  tipo_evaluacion: TipoEvaluacionData;
   cfg_a: CfgAItem[];
   cfg_e: CfgEItem[];
+}
+
+export interface EvalByUserItem {
+  id: number;
+  id_configuracion: number;
+  estudiante: string;
+  docente: string;
+  codigo_materia: string;
+  es_evaluacion: boolean;
+  es_finalizada: boolean;
+  nombre_docente: string;
+  nombre_materia: string;
+  nom_programa: string;
+  semestre: string;
 }
 
 // ========================
@@ -136,24 +257,105 @@ class ConfiguracionEvaluacionService extends BaseService<
   }
 
   /**
+   * Crear configuración completa (cfg_t + scopes + roles + autoevaluación opcional)
+   * POST /cfg/t/full
+   */
+  async createFull(payload: CreateCfgTFullInput): Promise<ApiResponse<CreateCfgTFullResponse>> {
+    return this.executeAsync(
+      () => httpClient.post<CreateCfgTFullResponse>('/cfg/t/full', payload),
+      {
+        cfg_eval: { id: 0 },
+        cfg_autoeval: null,
+        relation: null,
+        scope_count: 0,
+      }
+    );
+  }
+
+  /**
    * Obtener aspectos con sus escalas configuradas para una configuración
    * GET /cfg/t/{id}/a-e
    */
-  async getAspectosConEscalas(id: number): Promise<ApiResponse<AspectoConEscalas[]>> {
+  async getAspectosConEscalas(id: number): Promise<ApiResponse<ConfiguracionAspectosEscalasResponse>> {
     return this.executeAsync(
-      () => httpClient.get<AspectoConEscalas[]>(`/cfg/t/${id}/a-e`),
+      () => httpClient.get<ConfiguracionAspectosEscalasResponse>(`/cfg/t/${id}/a-e`),
+      {
+        es_evaluacion: false,
+        es_cmt_gen: false,
+        es_cmt_gen_oblig: false,
+        tipo_form_id: 0,
+        tipo_form: null,
+        tipo_evaluacion: {
+          id: 0,
+          categoria: {
+            id: 0,
+            nombre: '',
+            descripcion: ''
+          },
+          tipo: {
+            id: 0,
+            nombre: '',
+            descripcion: ''
+          }
+        },
+        aspectos: []
+      }
+    );
+  }
+
+  /**
+   * Obtener cfg_a y cfg_e configurados para una configuración (id opcional)
+   * GET /cfg/t/cfg-a_cfg-e
+   * GET /cfg/t/{id}/cfg-a_cfg-e
+   */
+  async getCfgACfgE(id?: number): Promise<ApiResponse<ConfiguracionCfgACfgEResponse | ConfiguracionCfgACfgEResponse[]>> {
+    const path = typeof id === 'number' ? `/cfg/t/${id}/cfg-a_cfg-e` : '/cfg/t/cfg-a_cfg-e';
+    const defaultItem: ConfiguracionCfgACfgEResponse = {
+      es_evaluacion: false,
+      es_cmt_gen: false,
+      es_cmt_gen_oblig: false,
+      tipo_evaluacion: {
+        id: 0,
+        categoria: {
+          id: 0,
+          nombre: '',
+          descripcion: ''
+        },
+        tipo: {
+          id: 0,
+          nombre: '',
+          descripcion: ''
+        }
+      },
+      cfg_a: [],
+      cfg_e: []
+    };
+
+    return this.executeAsync(
+      () => httpClient.get<ConfiguracionCfgACfgEResponse | ConfiguracionCfgACfgEResponse[]>(path),
+      typeof id === 'number' ? defaultItem : []
+    );
+  }
+
+  /**
+   * Obtener evaluaciones/encuestas del usuario autenticado por configuración
+   * GET /cfg/t/{id}/evals
+   */
+  async getEvaluacionesByCfgT(id: number): Promise<ApiResponse<EvalByUserItem[]>> {
+    return this.executeAsync(
+      () => httpClient.get<EvalByUserItem[]>(`/cfg/t/${id}/evals`),
       []
     );
   }
 
   /**
-   * Obtener cfg_a y cfg_e configurados para una configuración
-   * GET /cfg/t/{id}/cfg-a_cfg-e
+   * Obtener scopes por cfg_t
+   * GET /cfg/t/{id}/scope
    */
-  async getCfgACfgE(id: number): Promise<ApiResponse<ConfiguracionCfgACfgEResponse>> {
+  async getScopesByCfgT(id: number): Promise<ApiResponse<CfgTScopeItem[]>> {
     return this.executeAsync(
-      () => httpClient.get<ConfiguracionCfgACfgEResponse>(`/cfg/t/${id}/cfg-a_cfg-e`),
-      { cfg_a: [], cfg_e: [] }
+      () => httpClient.get<CfgTScopeItem[]>(`/cfg/t/${id}/scope`),
+      []
     );
   }
 

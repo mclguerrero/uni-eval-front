@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -10,27 +9,28 @@ import {
   Edit,
   Trash2,
   ChevronRight,
-  AlertCircle,
+  FileText,
+  Calendar,
+  MessageSquare,
+  Settings2,
+  Trophy,
+  Clock,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   configuracionEvaluacionService,
-  tipoService,
-  categoriaTipoService,
   type ConfiguracionTipo,
-  type Tipo,
   type Aspecto,
   type Escala,
   type AspectoConEscalas,
   type CfgAItem,
   type CfgEItem,
 } from "@/src/api";
-import type { PaginationMeta, PaginationParams } from "@/src/api/types/api.types";
 import { ConfiguracionAspectoView } from "./ConfiguracionAspectoView";
 import { ConfiguracionEscalaView } from "./ConfiguracionEscalaView";
 import { AeView } from "./AeView";
 import { ModalConfiguracionTipo } from "./ModalConfiguracionTipo";
-import { PaginationControls } from "../../PaginationControls";
+import { type RolMixto } from "@/src/api";
 
 interface ConfiguracionViewProps {
   aspectos: Aspecto[];
@@ -38,8 +38,9 @@ interface ConfiguracionViewProps {
   setModalConfiguracionAspecto: (value: any) => void;
   setModalConfiguracionEscala: (value: any) => void;
   setModalAe: (value: any) => void;
-  handleEliminarConfiguracion: (config: ConfiguracionTipo) => void;
-  refreshData: () => void;
+  handleEliminarConfiguracion: (config: ConfiguracionTipo, onSuccess?: () => void) => void;
+  refreshData: () => void | Promise<void>;
+  rolesDisponibles?: RolMixto[];
 }
 
 interface ConfigurationStep {
@@ -66,10 +67,6 @@ export function ConfiguracionView({
   
   const [configuraciones, setConfiguraciones] = useState<ConfiguracionTipo[]>([]);
   const [selectedConfig, setSelectedConfig] = useState<ConfiguracionTipo | null>(null);
-  const [tiposById, setTiposById] = useState<Map<number, Tipo>>(new Map());
-  const [categoriasPorTipo, setCategoriaPorTipo] = useState<Map<number, string>>(new Map());
-  const [configPagination, setConfigPagination] = useState<PaginationMeta | null>(null);
-  const [configParams, setConfigParams] = useState<PaginationParams>({ page: 1, limit: 10 });
   
   // Estados para las configuraciones de aspectos y escalas
   const [aspectosConEscalas, setAspectosConEscalas] = useState<AspectoConEscalas[]>([]);
@@ -78,15 +75,15 @@ export function ConfiguracionView({
   
   // Pasos del proceso
   const [steps, setSteps] = useState<ConfigurationStep[]>([
-    { id: 1, title: "Crear Configuración", description: "Define tipo, fechas y opciones", completed: false },
-    { id: 2, title: "Configurar Aspectos", description: "Selecciona y ordena los aspectos", completed: false },
-    { id: 3, title: "Configurar Escalas", description: "Define puntajes y orden", completed: false },
-    { id: 4, title: "Relación A/E", description: "Vincula aspectos con escalas", completed: false },
+    { id: 1, title: "Base", description: "Definición inicial", completed: false },
+    { id: 2, title: "Aspectos", description: "Criterios evaluación", completed: false },
+    { id: 3, title: "Escalas", description: "Rangos de valor", completed: false },
+    { id: 4, title: "Relación", description: "Vinculación A/E", completed: false },
   ]);
 
   useEffect(() => {
     loadData();
-  }, [configParams.page, configParams.limit]);
+  }, []);
 
   useEffect(() => {
     if (selectedConfig) {
@@ -101,111 +98,54 @@ export function ConfiguracionView({
     return [];
   };
 
-  const extractPagination = (payload: any): PaginationMeta | null => {
-    if (payload?.pagination) return payload.pagination as PaginationMeta;
-    if (payload?.meta) {
-      const meta = payload.meta;
-      const totalPages = meta.pages ?? meta.totalPages ?? 1;
-      const page = meta.page ?? 1;
-      return {
-        page,
-        limit: meta.limit ?? 10,
-        total: meta.total ?? 0,
-        totalPages,
-        hasNextPage: meta.hasNext ?? meta.hasNextPage ?? page < totalPages,
-        hasPreviousPage: meta.hasPrev ?? meta.hasPreviousPage ?? page > 1,
-      };
+  const formatScopeSummary = (config: ConfiguracionTipo) => {
+    if (!config.scopes?.length) return "Sin scopes";
+    const scope = config.scopes[0];
+    
+    const parts: string[] = [];
+    
+    if (scope.sede_nombre) {
+      parts.push(scope.sede_nombre);
     }
-    return null;
+    
+    if (scope.periodo_nombre) {
+      parts.push(scope.periodo_nombre);
+    }
+    
+    if (scope.programa_nombre) {
+      parts.push(scope.programa_nombre);
+    }
+    
+    if (scope.semestre_nombre) {
+      parts.push(scope.semestre_nombre);
+    }
+    
+    if (scope.grupo_nombre) {
+      parts.push(scope.grupo_nombre);
+    }
+    
+    return parts.length > 0 ? parts.join(" · ") : "Sin datos de scope";
   };
 
   const loadData = async () => {
     try {
-      // Cargar configuraciones
-      const configResponse = await configuracionEvaluacionService.getAll(configParams);
+      const configResponse = await configuracionEvaluacionService.getAllByRole();
       if (configResponse.success && configResponse.data) {
         const configs = extractItems<ConfiguracionTipo>(configResponse.data);
-        setConfigPagination(extractPagination(configResponse.data));
         setConfiguraciones(configs);
         
-        // Seleccionar la primera configuración si existe
-        if (configs.length > 0 && !selectedConfig) {
-          setSelectedConfig(configs[0]);
+        if (configs.length > 0) {
+          if (!selectedConfig) {
+            setSelectedConfig(configs[0]);
+          } else {
+            const selectedUpdated = configs.find((cfg) => cfg.id === selectedConfig.id) || null;
+            setSelectedConfig(selectedUpdated);
+          }
         }
       }
-      
-      // Cargar tipos para mostrar nombres
-      const tipos = await fetchAllTipos();
-      const tiposMap = new Map(tipos.map(t => [t.id, t]));
-      setTiposById(tiposMap);
     } catch (error) {
       console.error("Error loading data:", error);
     }
-  };
-
-  const fetchAllTipos = async (): Promise<Tipo[]> => {
-    const all: Tipo[] = [];
-    let page = 1;
-    const limit = 100;
-
-    while (true) {
-      const response = await tipoService.getAll({ page, limit });
-      if (!response.success || !response.data) {
-        break;
-      }
-
-      const batch = extractItems<Tipo>(response.data);
-      all.push(...batch);
-
-      const pagination = extractPagination(response.data);
-      if (!pagination || !pagination.hasNextPage) {
-        break;
-      }
-      page += 1;
-      if (page > (pagination.totalPages || page)) {
-        break;
-      }
-    }
-
-    return all;
-  };
-
-  const fetchAllCategorias = async (): Promise<Map<number, string>> => {
-    const categoriasMap = new Map<number, string>();
-    try {
-      const response = await categoriaTipoService.getAll();
-      if (response.success && response.data) {
-        const categorias = extractItems(response.data);
-        categorias.forEach((cat: any) => {
-          if (cat.id && cat.nombre) {
-            categoriasMap.set(cat.id, cat.nombre);
-          }
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-    }
-    return categoriasMap;
-  };
-
-  const getTipoCategoria = async (tipoId: number): Promise<string> => {
-    try {
-      const response = await categoriaTipoService.getTiposByCategoria(tipoId);
-      if (response.success && response.data) {
-        return response.data.categoria_id?.toString() || "Sin categoría";
-      }
-    } catch (error) {
-      console.error("Error fetching tipo categoria:", error);
-    }
-    return "Sin categoría";
-  };
-
-  const handleConfigPageChange = (page: number) => {
-    setConfigParams((prev) => ({ ...prev, page }));
-  };
-
-  const handleConfigLimitChange = (limit: number) => {
-    setConfigParams({ page: 1, limit });
   };
 
   const loadConfigDetails = async (configId: number) => {
@@ -215,21 +155,24 @@ export function ConfiguracionView({
         configuracionEvaluacionService.getAspectosConEscalas(configId),
       ]);
 
-      const cfgA = cfgResponse.success && cfgResponse.data ? cfgResponse.data.cfg_a : [];
-      const cfgE = cfgResponse.success && cfgResponse.data ? cfgResponse.data.cfg_e : [];
+      const cfgData = cfgResponse.success && cfgResponse.data && !Array.isArray(cfgResponse.data) 
+        ? cfgResponse.data 
+        : null;
+      
+      const cfgA = cfgData ? cfgData.cfg_a : [];
+      const cfgE = cfgData ? cfgData.cfg_e : [];
 
-      // Ya no necesitamos mapear, usamos los datos directamente del API
       setConfiguracionAspectos(cfgA);
       setConfiguracionEscalas(cfgE);
 
       if (aeResponse.success && aeResponse.data) {
-        setAspectosConEscalas(aeResponse.data);
+        setAspectosConEscalas(aeResponse.data.aspectos);
       } else {
         setAspectosConEscalas([]);
       }
 
       const hasAE = aeResponse.success && aeResponse.data
-        ? aeResponse.data.some((a) => a.opciones.length > 0)
+        ? aeResponse.data.aspectos.some((a: AspectoConEscalas) => a.opciones.length > 0)
         : false;
 
       updateSteps(
@@ -248,17 +191,17 @@ export function ConfiguracionView({
 
   const updateSteps = (hasConfig: boolean, hasAspectos: boolean, hasEscalas: boolean, hasAE: boolean) => {
     setSteps([
-      { id: 1, title: "Crear Configuración", description: "Define tipo, fechas y opciones", completed: hasConfig },
-      { id: 2, title: "Configurar Aspectos", description: "Selecciona y ordena los aspectos", completed: hasAspectos },
-      { id: 3, title: "Configurar Escalas", description: "Define puntajes y orden", completed: hasEscalas },
-      { id: 4, title: "Relación A/E", description: "Vincula aspectos con escalas", completed: hasAE },
+      { id: 1, title: "Base", description: "Definición inicial", completed: hasConfig },
+      { id: 2, title: "Aspectos", description: "Criterios evaluación", completed: hasAspectos },
+      { id: 3, title: "Escalas", description: "Rangos de valor", completed: hasEscalas },
+      { id: 4, title: "Relación", description: "Vinculación A/E", completed: hasAE },
     ]);
   };
 
-  const handleConfigCreated = (newConfig: ConfiguracionTipo) => {
-    loadData();
+  const handleConfigCreated = async (newConfig: ConfiguracionTipo) => {
+    await loadData();
     setSelectedConfig(newConfig);
-    refreshData();
+    await refreshData();
   };
 
   const handleSelectConfig = (config: ConfiguracionTipo) => {
@@ -266,11 +209,12 @@ export function ConfiguracionView({
   };
 
   const handleDeleteConfig = (config: ConfiguracionTipo) => {
-    handleEliminarConfiguracion(config);
-    if (selectedConfig?.id === config.id) {
-      setSelectedConfig(null);
-    }
-    loadData();
+    handleEliminarConfiguracion(config, async () => {
+      if (selectedConfig?.id === config.id) {
+        setSelectedConfig(null);
+      }
+      await loadData();
+    });
   };
 
   const handleToggleField = async (configId: number, field: "es_cmt_gen" | "es_cmt_gen_oblig" | "es_activo") => {
@@ -278,298 +222,405 @@ export function ConfiguracionView({
       const response = await configuracionEvaluacionService.toggleField(configId, field);
       if (response.success) {
         toast({
-          title: "Éxito",
-          description: `${field} actualizado correctamente`,
+          title: "Actualización Exitosa",
+          description: "La configuración ha sido modificada correctamente.",
         });
-        loadData();
-      } else {
-        toast({
-          title: "Error",
-          description: "No se pudo actualizar el campo",
-          variant: "destructive",
-        });
+        await loadData();
+        await refreshData();
       }
     } catch (error) {
       console.error("Error toggling field:", error);
-      toast({
-        title: "Error",
-        description: "Ocurrió un error al actualizar",
-        variant: "destructive",
-      });
     }
   };
 
-  const handleAspectosConfigured = () => {
+  const handleAspectosConfigured = async () => {
     if (selectedConfig) {
-      loadConfigDetails(selectedConfig.id);
+      await loadConfigDetails(selectedConfig.id);
     }
-    refreshData();
+    await refreshData();
   };
 
-  const handleEscalasConfigured = () => {
+  const handleEscalasConfigured = async () => {
     if (selectedConfig) {
-      loadConfigDetails(selectedConfig.id);
+      await loadConfigDetails(selectedConfig.id);
     }
-    refreshData();
+    await refreshData();
   };
+
+  const configGroups = (() => {
+    const grouped: ConfiguracionTipo[][] = [];
+    const visited = new Set<number>();
+    const byId = new Map(configuraciones.map((cfg) => [cfg.id, cfg]));
+    const indexById = new Map(configuraciones.map((cfg, index) => [cfg.id, index]));
+    const pairById = new Map<number, number>();
+
+    for (const cfg of configuraciones) {
+      const pairId = cfg.cfg_t_rel?.pareja_cfg_t_id;
+      if (!pairId) continue;
+
+      const pairCfg = byId.get(pairId);
+      if (!pairCfg) continue;
+
+      pairById.set(cfg.id, pairCfg.id);
+      if (!pairById.has(pairCfg.id)) {
+        pairById.set(pairCfg.id, cfg.id);
+      }
+    }
+
+    for (const config of configuraciones) {
+      if (visited.has(config.id)) continue;
+
+      const pairId = pairById.get(config.id);
+      if (pairId) {
+        const pairConfig = byId.get(pairId);
+        if (pairConfig && !visited.has(pairConfig.id)) {
+          const pairGroup = [config, pairConfig].sort((a, b) => {
+            const indexA = indexById.get(a.id) ?? 0;
+            const indexB = indexById.get(b.id) ?? 0;
+            return indexA - indexB;
+          });
+
+          grouped.push(pairGroup);
+          visited.add(config.id);
+          visited.add(pairConfig.id);
+          continue;
+        }
+      }
+
+      grouped.push([config]);
+      visited.add(config.id);
+    }
+
+    return grouped;
+  })();
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Configuración de Evaluación</h1>
-        <p className="text-muted-foreground mt-2">
-          Sigue el proceso completo para configurar una evaluación
-        </p>
-      </div>
-
-      {/* Progress Steps */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Progreso de Configuración</CardTitle>
-          <CardDescription>
-            Completa todos los pasos para tener una evaluación lista
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {steps.map((step, index) => (
-              <div key={step.id} className="relative">
-                <div className={`p-4 rounded-lg border-2 transition-colors ${
-                  step.completed
-                    ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
-                    : 'border-gray-300 bg-white dark:bg-gray-900'
-                }`}>
-                  <div className="flex items-start gap-3">
-                    <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                      step.completed
-                        ? 'bg-green-500 text-white'
-                        : 'bg-gray-200 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-                    }`}>
-                      {step.completed ? (
-                        <CheckCircle2 className="h-5 w-5" />
-                      ) : (
-                        <span className="text-sm font-semibold">{step.id}</span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-sm">{step.title}</h4>
-                      <p className="text-xs text-muted-foreground mt-1">{step.description}</p>
-                    </div>
+    <div className="space-y-10 animate-in fade-in duration-1000">
+      {/* Progress Monitor */}
+      <section className="space-y-6">
+        <div className="flex items-center gap-3 px-4">
+          <Trophy className="h-4 w-4 text-amber-500" />
+          <h3 className="text-xs font-semibold text-slate-400 leading-none">Workflow de Configuración</h3>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {steps.map((step, index) => (
+            <div key={step.id} className="relative group">
+              <div className={`p-5 rounded-[2rem] border transition-all duration-500 ${
+                step.completed
+                  ? 'border-emerald-100 bg-emerald-50/50 shadow-sm'
+                  : 'border-slate-100 bg-white'
+              }`}>
+                <div className="flex flex-col items-center text-center gap-3">
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500 ${
+                    step.completed
+                      ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200'
+                      : 'bg-slate-50 text-slate-300'
+                  }`}>
+                    {step.completed ? <CheckCircle2 className="h-5 w-5" /> : <span className="text-xs font-black">{step.id}</span>}
+                  </div>
+                  <div>
+                    <h4 className={`text-xs font-semibold ${step.completed ? 'text-emerald-700' : 'text-slate-900'}`}>
+                      {step.title}
+                    </h4>
+                    <p className="text-xs font-medium text-slate-400 mt-1">
+                      {step.description}
+                    </p>
                   </div>
                 </div>
-                {index < steps.length - 1 && (
-                  <ChevronRight className="hidden lg:block absolute top-1/2 -right-5 transform -translate-y-1/2 text-gray-400" />
-                )}
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Panel - Configurations List */}
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <div className="flex justify-between items-start">
-              <div>
-                <CardTitle>Configuraciones</CardTitle>
-                <CardDescription>Selecciona una para configurar</CardDescription>
-              </div>
-              <Button
-                size="sm"
-                onClick={() => setModalConfiguracionTipo({ isOpen: true, configuracion: undefined })}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Nueva
-              </Button>
+              {index < steps.length - 1 && (
+                <div className="hidden md:block absolute top-1/2 -right-4 transform -translate-y-1/2 z-10">
+                   <ChevronRight className={`h-4 w-4 ${steps[index].completed && steps[index+1].completed ? 'text-emerald-500' : 'text-slate-200'}`} />
+                </div>
+              )}
             </div>
-          </CardHeader>
-          <CardContent>
-            {configuraciones.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <AlertCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">No hay configuraciones</p>
-                <p className="text-xs mt-1">Crea una nueva para comenzar</p>
-              </div>
-            ) : (
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {configuraciones.map((config) => {
-                  const tipo = tiposById.get(config.tipo_evaluacion_id);
-                  const isSelected = selectedConfig?.id === config.id;
-                  
+          ))}
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+        {/* Inventory Panel */}
+        <div className="lg:col-span-4 space-y-6">
+          <div className="flex items-center justify-between px-4">
+            <div className="flex items-center gap-3">
+              <Settings2 className="h-4 w-4 text-indigo-600" />
+              <h3 className="text-xs font-semibold text-slate-400 leading-none">Inventario</h3>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setModalConfiguracionTipo({ isOpen: true, configuracion: undefined })}
+              className="h-8 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm px-4 shadow-lg shadow-indigo-100"
+            >
+              <Plus className="h-3 w-3 mr-2" />
+              Nuevo
+            </Button>
+          </div>
+
+          <ScrollArea className="h-[calc(100vh-450px)] pr-4">
+            <div className="space-y-4">
+              {configuraciones.length === 0 ? (
+                <div className="bg-slate-50/50 border border-slate-100 border-dashed rounded-[2.5rem] p-12 text-center">
+                  <FileText className="h-10 w-10 text-slate-200 mx-auto mb-4" />
+                  <p className="text-xs font-medium text-slate-400">Sin Registros</p>
+                </div>
+              ) : (
+                configGroups.map((group) => {
+                  const isPairGroup = group.length > 1;
                   return (
                     <div
-                      key={config.id}
-                      className={`p-3 rounded-lg border-2 cursor-pointer transition-colors ${
-                        isSelected
-                          ? 'border-primary bg-primary/5'
-                          : 'border-gray-200 hover:border-gray-300 dark:border-gray-800'
-                      }`}
-                      onClick={() => handleSelectConfig(config)}
+                      key={isPairGroup ? `pair-${group.map((cfg) => cfg.id).join("-")}` : group[0].id}
+                      className={isPairGroup ? "rounded-[2.75rem] border-2 border-indigo-200 bg-indigo-50/20 p-1 space-y-4" : "space-y-4"}
                     >
-                      <div className="space-y-2">
-                        {/* Header */}
-                        <div className="flex justify-between items-start gap-2">
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-sm truncate">
-                              {tipo?.nombre || `Tipo #${config.tipo_evaluacion_id}`}
-                            </h4>
-                            <p className="text-xs text-muted-foreground">ID: {config.id}</p>
-                          </div>
-                          <Badge variant={config.es_activo ? "default" : "secondary"} className="ml-2 flex-shrink-0">
-                            {config.es_activo ? "Activa" : "Inactiva"}
-                          </Badge>
-                        </div>
+                      {group.map((config) => {
+                        const isSelected = selectedConfig?.id === config.id;
 
-                        {/* Dates */}
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div>
-                            <span className="text-muted-foreground">Inicio:</span>
-                            <p className="font-mono text-xs">
-                              {new Date(config.fecha_inicio).toLocaleDateString("es-ES")}
-                            </p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Fin:</span>
-                            <p className="font-mono text-xs">
-                              {new Date(config.fecha_fin).toLocaleDateString("es-ES")}
-                            </p>
-                          </div>
-                        </div>
+                        return (
+                          <div
+                            key={config.id}
+                            onClick={() => handleSelectConfig(config)}
+                            className={`group cursor-pointer p-6 rounded-[2.5rem] border transition-all duration-500 ${
+                              isSelected
+                                ? 'border-indigo-200 bg-indigo-50/30 shadow-xl shadow-indigo-100/20'
+                                : 'border-slate-100 bg-white hover:border-slate-200'
+                            }`}
+                          >
+                            <div className="space-y-4">
+                              <div className="rounded-2xl border border-slate-100 bg-white/80 p-4 space-y-3">
+                                <div className="flex justify-between items-start gap-3">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                      {config.tipo_evaluacion?.categoria?.nombre || "Sin categoría"}
+                                    </p>
+                                    <h4 className="font-bold text-slate-900 text-sm leading-tight line-clamp-2">
+                                      {config.tipo_evaluacion?.tipo?.nombre || `Config #${config.id}`}
+                                    </h4>
+                                  </div>
+                                  <Badge className={`rounded-lg px-2 h-5 text-[10px] font-semibold ${
+                                    config.es_activo ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"
+                                  }`}>
+                                    {config.es_activo ? "Activa" : "Inactiva"}
+                                  </Badge>
+                                </div>
 
-                        {/* Toggles */}
-                        <div className="space-y-1 text-xs">
-                          <div 
-                            className="flex items-center justify-between p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleToggleField(config.id, "es_cmt_gen");
-                            }}
-                          >
-                            <span className="text-muted-foreground">Comentario General:</span>
-                            <Badge variant={config.es_cmt_gen ? "default" : "outline"}>
-                              {config.es_cmt_gen ? "Sí" : "No"}
-                            </Badge>
-                          </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Badge className="bg-white border border-slate-200 text-slate-600 rounded-lg text-[10px] font-semibold px-2 h-5">
+                                    {config.tipo_form?.nombre || "General"}
+                                  </Badge>
+                                  {config.cfg_t_rel?.pareja_cfg_t_id ? (
+                                    <Badge className="bg-indigo-50 text-indigo-700 border-none rounded-lg text-[10px] font-semibold px-2 h-5">
+                                      Pareja #{config.cfg_t_rel.pareja_cfg_t_id}
+                                    </Badge>
+                                  ) : null}
+                                  <span className="text-[10px] font-medium text-slate-400">ID: {config.id}</span>
+                                </div>
 
-                          <div 
-                            className="flex items-center justify-between p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleToggleField(config.id, "es_cmt_gen_oblig");
-                            }}
-                          >
-                            <span className="text-muted-foreground">Obligatorio:</span>
-                            <Badge variant={config.es_cmt_gen_oblig ? "default" : "outline"}>
-                              {config.es_cmt_gen_oblig ? "Sí" : "No"}
-                            </Badge>
-                          </div>
-                        </div>
+                                <div className="text-[10px] text-slate-600 leading-relaxed">
+                                  <p>
+                                    Rol: <span className="font-semibold text-slate-700">{config.rolesRequeridos?.[0]?.nombre || "-"}</span>
+                                  </p>
+                                  <p className="line-clamp-2">
+                                    Scope: <span className="font-semibold text-slate-700">{formatScopeSummary(config)}</span>
+                                  </p>
+                                </div>
 
-                        {/* Actions */}
-                        <div className="flex gap-1 mt-2 pt-2 border-t">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setModalConfiguracionTipo({ isOpen: true, configuracion: config });
-                            }}
-                            className="flex-1 h-8"
-                          >
-                            <Edit className="h-3 w-3 mr-1" />
-                            Editar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteConfig(config);
-                            }}
-                            className="flex-1 h-8"
-                          >
-                            <Trash2 className="h-3 w-3 mr-1" />
-                            Eliminar
-                          </Button>
-                        </div>
-                      </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="rounded-xl bg-slate-50 border border-slate-100 p-2.5">
+                                    <span className="text-[10px] font-medium text-slate-400">Inicia</span>
+                                    <div className="flex items-center gap-1.5 text-slate-700 mt-1">
+                                      <Calendar className="h-3 w-3" />
+                                      <span className="text-[11px] font-semibold">{new Date(config.fecha_inicio).toLocaleDateString()}</span>
+                                    </div>
+                                  </div>
+                                  <div className="rounded-xl bg-slate-50 border border-slate-100 p-2.5">
+                                    <span className="text-[10px] font-medium text-slate-400">Termina</span>
+                                    <div className="flex items-center gap-1.5 text-slate-700 mt-1">
+                                      <Clock className="h-3 w-3" />
+                                      <span className="text-[11px] font-semibold">{new Date(config.fecha_fin).toLocaleDateString()}</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 space-y-1.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <MessageSquare className="h-3 w-3 text-slate-500" />
+                                    <span className="text-[10px] font-semibold text-slate-600">Comentario general</span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-2 text-[10px]">
+                                    <span className={config.es_cmt_gen ? "text-blue-700 font-semibold" : "text-slate-500"}>
+                                      {config.es_cmt_gen ? "Activo" : "Inactivo"}
+                                    </span>
+                                    <div className="flex items-center gap-1.5">
+                                      <Button
+                                        size="sm"
+                                        variant={config.es_cmt_gen ? "default" : "outline"}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleToggleField(config.id, "es_cmt_gen");
+                                        }}
+                                        className="h-6 rounded-md px-2 text-[9px] font-semibold"
+                                      >
+                                        {config.es_cmt_gen ? "Desact." : "Activar"}
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant={config.es_cmt_gen_oblig ? "default" : "outline"}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleToggleField(config.id, "es_cmt_gen_oblig");
+                                        }}
+                                        disabled={!config.es_cmt_gen}
+                                        className="h-6 rounded-md px-2 text-[9px] font-semibold"
+                                      >
+                                        {config.es_cmt_gen_oblig ? "Oblig." : "Obligar"}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 gap-2 pt-2">
+                                <Button
+                                  size="sm"
+                                  variant={config.es_activo ? "default" : "outline"}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleField(config.id, "es_activo");
+                                  }}
+                                  className="h-8 rounded-lg text-[10px] font-semibold"
+                                >
+                                  {config.es_activo ? "Activada" : "Activar"}
+                                </Button>
+                              </div>
+
+                              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setModalConfiguracionTipo({ isOpen: true, configuracion: config });
+                                  }}
+                                  className="flex-1 h-9 rounded-xl hover:bg-white hover:text-indigo-600 font-semibold text-sm shadow-sm border border-transparent hover:border-slate-100"
+                                >
+                                  <Edit className="h-3 w-3 mr-2" />
+                                  Editar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteConfig(config);
+                                  }}
+                                  className="flex-1 h-9 rounded-xl hover:bg-rose-50 hover:text-rose-600 font-semibold text-sm"
+                                >
+                                  <Trash2 className="h-3 w-3 mr-2" />
+                                  Eliminar
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   );
-                })}
-                <PaginationControls
-                  pagination={configPagination}
-                  onPageChange={handleConfigPageChange}
-                  onLimitChange={handleConfigLimitChange}
-                />
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                })
+              )}
+            </div>
+          </ScrollArea>
+        </div>
 
-        {/* Right Panel - Configuration Details */}
-        <div className="lg:col-span-2 space-y-6">
+        {/* Workspace Panel */}
+        <div className="lg:col-span-8 space-y-6">
           {!selectedConfig ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Settings className="h-16 w-16 text-muted-foreground/30 mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No hay configuración seleccionada</h3>
-                <p className="text-sm text-muted-foreground text-center max-w-md">
-                  Selecciona una configuración existente de la lista o crea una nueva para comenzar
-                  a configurar los aspectos y escalas
-                </p>
-              </CardContent>
-            </Card>
+            <div className="h-full flex items-center justify-center p-10 bg-slate-50/50 border border-slate-100 border-dashed rounded-[3rem]">
+              <div className="text-center max-w-sm">
+                 <div className="h-20 w-20 bg-white rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-sm border border-slate-100">
+                    <Settings className="h-10 w-10 text-slate-100" />
+                 </div>
+                 <h3 className="text-xl font-bold text-slate-900 mb-2">Entorno Vacío</h3>
+                 <p className="text-slate-400 font-medium text-sm">
+                   Selecciona un modelo del inventario para iniciar la orquestación de componentes y reglas de negocio.
+                 </p>
+              </div>
+            </div>
           ) : (
-            <Tabs defaultValue="aspectos" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="aspectos">Aspectos</TabsTrigger>
-                <TabsTrigger value="escalas">Escalas</TabsTrigger>
-                <TabsTrigger value="a-e">Relación A/E</TabsTrigger>
-              </TabsList>
+            <div className="space-y-8 animate-in slide-in-from-right-4 duration-700">
+              {/* Functional Tabs */}
+              <Tabs defaultValue="aspectos" className="w-full">
+                <TabsList className="bg-slate-100/50 p-1.5 rounded-[2rem] border border-slate-200/50 grid grid-cols-3 h-14">
+                  <TabsTrigger 
+                    value="aspectos" 
+                      className="rounded-[1.5rem] font-semibold text-sm data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm"
+                  >
+                    Aspectos
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="escalas" 
+                      className="rounded-[1.5rem] font-semibold text-sm data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm"
+                  >
+                    Escalas
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="a-e" 
+                      className="rounded-[1.5rem] font-semibold text-sm data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm"
+                  >
+                    Matriz A/E
+                  </TabsTrigger>
+                </TabsList>
 
-              <TabsContent value="aspectos" className="mt-6">
-                <ConfiguracionAspectoView
-                  configuraciones={configuracionAspectos}
-                  setModalConfiguracionAspecto={() => {
-                    setModalConfiguracionAspecto({
-                      isOpen: true,
-                      cfgTId: selectedConfig.id,
-                      aspectos: aspectos,
-                      onSuccess: handleAspectosConfigured,
-                    });
-                  }}
-                  onConfigUpdated={handleAspectosConfigured}
-                />
-              </TabsContent>
+                <div className="mt-8 bg-white border border-slate-100 rounded-[2.5rem] p-8 min-h-[500px] shadow-sm">
+                  <TabsContent value="aspectos" className="m-0 focus-visible:ring-0">
+                    <ConfiguracionAspectoView
+                      configuraciones={configuracionAspectos}
+                      setModalConfiguracionAspecto={() => {
+                        setModalConfiguracionAspecto({
+                          isOpen: true,
+                          cfgTId: selectedConfig.id,
+                          aspectos: aspectos,
+                          onSuccess: handleAspectosConfigured,
+                        });
+                      }}
+                      onConfigUpdated={handleAspectosConfigured}
+                    />
+                  </TabsContent>
 
-              <TabsContent value="escalas" className="mt-6">
-                <ConfiguracionEscalaView
-                  configuraciones={configuracionEscalas}
-                  setModalConfiguracionEscala={() => {
-                    setModalConfiguracionEscala({
-                      isOpen: true,
-                      cfgTId: selectedConfig.id,
-                      escalas: escalas,
-                      onSuccess: handleEscalasConfigured,
-                    });
-                  }}
-                  onConfigUpdated={handleEscalasConfigured}
-                />
-              </TabsContent>
+                  <TabsContent value="escalas" className="m-0 focus-visible:ring-0">
+                    <ConfiguracionEscalaView
+                      configuraciones={configuracionEscalas}
+                      setModalConfiguracionEscala={() => {
+                        setModalConfiguracionEscala({
+                          isOpen: true,
+                          cfgTId: selectedConfig.id,
+                          escalas: escalas,
+                          onSuccess: handleEscalasConfigured,
+                        });
+                      }}
+                      onConfigUpdated={handleEscalasConfigured}
+                    />
+                  </TabsContent>
 
-              <TabsContent value="a-e" className="mt-6">
-                <AeView
-                  aspectosConEscalas={aspectosConEscalas}
-                  setModalAe={() => setModalAe({ isOpen: true, cfgTId: selectedConfig.id })}
-                />
-              </TabsContent>
-            </Tabs>
+                  <TabsContent value="a-e" className="m-0 focus-visible:ring-0">
+                    <AeView
+                      aspectosConEscalas={aspectosConEscalas}
+                      configuracionAspectos={configuracionAspectos}
+                      cfgTId={selectedConfig.id}
+                      setModalAe={() => setModalAe({
+                        isOpen: true,
+                        cfgTId: selectedConfig.id,
+                        onSuccess: handleAspectosConfigured,
+                      })}
+                      onConfigUpdated={handleAspectosConfigured}
+                    />
+                  </TabsContent>
+                </div>
+              </Tabs>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Modal */}
       <ModalConfiguracionTipo
         isOpen={modalConfiguracionTipo.isOpen}
         onClose={() => setModalConfiguracionTipo({ isOpen: false, configuracion: undefined })}
@@ -578,4 +629,9 @@ export function ConfiguracionView({
       />
     </div>
   );
+}
+
+// Added ScrollArea mock if not imported
+function ScrollArea({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={`overflow-y-auto custom-scrollbar ${className}`}>{children}</div>;
 }

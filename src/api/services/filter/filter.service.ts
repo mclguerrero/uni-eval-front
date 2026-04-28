@@ -10,16 +10,25 @@ import { httpClient } from '../../core/HttpClient';
 /**
  * Interface para la respuesta de filtros completos
  */
-interface FilterResponse {
-  success: boolean;
-  message: string;
-  data: {
-    sedes: string[];
-    periodos: string[];
-    programas: string[];
-    semestres: string[];
-    grupos: string[];
-  };
+export interface FilterOption {
+  id: number;
+  nombre: string;
+}
+
+export interface FilterRolOption {
+  id: number;
+  nombre: string;
+  origen: string;
+  rol_origen_id: number;
+}
+
+export interface FilterResponse {
+  sedes: FilterOption[];
+  periodos: FilterOption[];
+  programas: FilterOption[];
+  semestres: FilterOption[];
+  grupos: FilterOption[];
+  roles: FilterRolOption[];
 }
 
 /**
@@ -94,7 +103,7 @@ interface SingleFilterResponse<T = string[]> {
  *                   type: string
  *                   example: Error al obtener filtros
  */
-export const getAllFilters = async (): Promise<FilterResponse> => {
+export const getAllFiltersLocal = async (): Promise<FilterResponse> => {
   try {
     const response = await httpClient.get('/filter');
     return response;
@@ -102,6 +111,8 @@ export const getAllFilters = async (): Promise<FilterResponse> => {
     throw new Error('Error al obtener filtros');
   }
 };
+
+export const getAllFilters = getAllFiltersLocal;
 
 /**
  * @swagger
@@ -414,6 +425,7 @@ export const getGrupos = async (
 };
 
 export const filterService = {
+  getAllFiltersLocal,
   getAllFilters,
   getSedes,
   getPeriodos,
